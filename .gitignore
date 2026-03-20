@@ -1,44 +1,10 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# OS residuals
+# Root-level ignore
+.venv/
+venv/
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
 
-# Virtual Environment
-.venv/
-venv/
-env/
-ENV/
-
-# IDE
-.vscode/
-.idea/
-
-# YOLO/Dataset specific (now inside server/)
-server/runs/
-server/datasets/
-server/*.pt
-server/*.cache
-server/yolo*_log.txt
-server/yolo_log.txt
-
-# Exceptions to allow models
-!server/models/
-!server/models/*.pt
-
-# Project specific
-frontend/
-docs/
-doc_extract/
-doc.zip
-extract_docx_text.py
-text_content.txt
-safety_events.log
-ket_qua.jpg
-
-# Kept important files
-!server/requirements.txt
-!README.md
+# Ignore other subprojects if needed
+# frontend/
