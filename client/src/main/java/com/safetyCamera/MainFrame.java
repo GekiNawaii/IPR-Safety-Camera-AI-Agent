@@ -42,6 +42,11 @@ public class MainFrame extends JFrame {
     private final JLabel         fpsLabel;
     private final ModeSelectorPopup modePopup;
 
+    // ── Log UI ────────────────────────────────────────────────────
+    private final JTextArea      logArea;
+    private final JScrollPane    logScrollPane;
+    private boolean              isLogVisible = false;
+
     // ── Camera / detection thread ──────────────────────────────────
     private final VideoCapture   capture;
     private final DetectionEngine engine = new DetectionEngine();
@@ -111,6 +116,29 @@ public class MainFrame extends JFrame {
 
         // ── Mode popup ────────────────────────────────────────────
         modePopup = new ModeSelectorPopup();
+
+        // ── Log panel ─────────────────────────────────────────────
+        logArea = new JTextArea();
+        logArea.setEditable(false);
+        logArea.setFont(new Font("Consolas", Font.PLAIN, 12));
+        logArea.setBackground(new Color(0x16213E));
+        logArea.setForeground(new Color(0xE0E0E0));
+        logArea.setBorder(new EmptyBorder(8, 8, 8, 8));
+        logArea.setLineWrap(true);
+        logArea.setWrapStyleWord(true);
+        
+        logScrollPane = new JScrollPane(logArea);
+        logScrollPane.setPreferredSize(new Dimension(320, 0));
+        logScrollPane.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, new Color(0x0F3460)));
+        logScrollPane.setVisible(false);
+        root.add(logScrollPane, BorderLayout.EAST);
+        
+        DetectionLogger.getInstance().addListener((timestamp, mode, eventType, details) -> {
+            SwingUtilities.invokeLater(() -> {
+                logArea.append(String.format("[%s] %s\n  Mode: %s\n  %s\n\n", timestamp, eventType, mode, details));
+                logArea.setCaretPosition(logArea.getDocument().getLength());
+            });
+        });
 
         // ── Listen for mode changes → update status bar ───────────
         ModeManager.getInstance().addPropertyChangeListener(this::onModeChange);
@@ -210,7 +238,32 @@ public class MainFrame extends JFrame {
             modePopup.show(modesBtn, 0, modesBtn.getHeight() + 2);
         });
 
+        // Logs toggle button
+        JButton toggleLogBtn = new JButton("📜 Logs");
+        toggleLogBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        toggleLogBtn.setBackground(new Color(0x0F3460));
+        toggleLogBtn.setForeground(new Color(0x53C0F0));
+        toggleLogBtn.setFocusPainted(false);
+        toggleLogBtn.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(0x0F3460), 1),
+            new EmptyBorder(6, 16, 6, 16)));
+        toggleLogBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        
+        toggleLogBtn.addActionListener(e -> {
+            isLogVisible = !isLogVisible;
+            logScrollPane.setVisible(isLogVisible);
+            revalidate();
+            repaint();
+        });
+
+        toggleLogBtn.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { toggleLogBtn.setBackground(new Color(0x1A4A80)); }
+            @Override public void mouseExited(MouseEvent e) { toggleLogBtn.setBackground(new Color(0x0F3460)); }
+        });
+
         right.add(liveLabel);
+        right.add(Box.createHorizontalStrut(6));
+        right.add(toggleLogBtn);
         right.add(Box.createHorizontalStrut(6));
         right.add(modesBtn);
         bar.add(right, BorderLayout.EAST);

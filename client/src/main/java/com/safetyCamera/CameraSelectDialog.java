@@ -90,9 +90,16 @@ public class CameraSelectDialog extends JDialog {
 
         startBtn.addActionListener(e -> {
             String sel = (String) cameraCombo.getSelectedItem();
-            if (sel != null) {
-                // "Camera 0 – Built-in" → extract index
-                selectedCameraIndex = Integer.parseInt(sel.replaceAll("\\D.*", "").trim());
+            if (sel != null && sel.contains(" ")) {
+                try {
+                    // Format is "Camera [index] ..."
+                    String[] parts = sel.split(" ");
+                    if (parts.length >= 2) {
+                        selectedCameraIndex = Integer.parseInt(parts[1]);
+                    }
+                } catch (NumberFormatException nfe) {
+                    System.err.println("Failed to parse camera index from: " + sel);
+                }
             }
             dispose();
         });

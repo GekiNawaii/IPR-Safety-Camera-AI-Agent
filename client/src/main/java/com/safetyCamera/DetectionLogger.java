@@ -5,6 +5,9 @@ import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 /**
  * Thread-safe CSV detection event logger.
  *
@@ -20,6 +23,11 @@ public class DetectionLogger {
     private static final DateTimeFormatter FMT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    public interface LogListener {
+        void onLogEvent(String timestamp, String mode, String eventType, String details);
+    }
+
+    private final List<LogListener> listeners = new CopyOnWriteArrayList<>();
     private final PrintWriter writer;
 
     private DetectionLogger() {
@@ -38,6 +46,14 @@ public class DetectionLogger {
         writer = pw;
     }
 
+    public void addListener(LogListener listener) {
+        listeners.add(listener);
+    }
+
+    public void removeListener(LogListener listener) {
+        listeners.remove(listener);
+    }
+
     /**
      * Write a single log entry.
      *
@@ -50,6 +66,10 @@ public class DetectionLogger {
         String ts = LocalDateTime.now().format(FMT);
         writer.printf("%s,%s,%s,%s%n", ts, escape(mode), escape(eventType), escape(details));
         writer.flush();
+
+        for (LogListener l : listeners) {
+            l.onLogEvent(ts, mode, eventType, details);
+        }
     }
 
     /** Convenience overload with no details. */

@@ -22,6 +22,26 @@ public class DetectionEngine {
     // ── HOG people detector ───────────────────────────────────────
     private final HOGDescriptor hog;
 
+    // ── Human Tracking ────────────────────────────────────────────
+    private static class TrackedHuman {
+        int id;
+        Rect rect;
+        int missedFrames;
+
+        TrackedHuman(int id, Rect rect) {
+            this.id = id;
+            this.rect = rect;
+            this.missedFrames = 0;
+        }
+
+        Point getCentroid() {
+            return new Point(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
+        }
+    }
+
+    private int nextHumanId = 1;
+    private final List<TrackedHuman> trackedHumans = new ArrayList<>();
+
     // ── Motion detection state ─────────────────────────────────────
     private Mat previousFrame = null;
 
@@ -87,26 +107,63 @@ public class DetectionEngine {
 
     private void processRestrictedArea(Mat frame) {
         List<Rect> people = detectPeople(frame);
+        List<TrackedHuman> newTracked = new ArrayList<>();
 
-        // Draw green bounding boxes
         for (Rect r : people) {
+            Point centroid = new Point(r.x + r.width / 2.0, r.y + r.height / 2.0);
+            TrackedHuman bestMatch = null;
+            double bestDist = Double.MAX_VALUE;
+
+            for (TrackedHuman th : trackedHumans) {
+                double dist = Math.hypot(centroid.x - th.getCentroid().x, centroid.y - th.getCentroid().y);
+                if (dist < 150 && dist < bestDist) { // 150 pixels distance threshold
+                    bestDist = dist;
+                    bestMatch = th;
+                }
+            }
+
+            if (bestMatch != null) {
+                bestMatch.rect = r;
+                bestMatch.missedFrames = 0;
+                newTracked.add(bestMatch);
+                trackedHumans.remove(bestMatch); // prevent multiple matches to same old track
+            } else {
+                newTracked.add(new TrackedHuman(nextHumanId++, r));
+            }
+        }
+
+        for (TrackedHuman th : trackedHumans) {
+            th.missedFrames++;
+            if (th.missedFrames < 5) {
+                newTracked.add(th); // keep alive for a few frames if missed
+            }
+        }
+
+        trackedHumans.clear();
+        trackedHumans.addAll(newTracked);
+
+        // Draw green bounding boxes for tracked humans
+        for (TrackedHuman th : trackedHumans) {
+            Rect r = th.rect;
             // Slightly expand box for visual comfort
             Rect expanded = new Rect(
                 Math.max(0, r.x - 4), Math.max(0, r.y - 4),
                 Math.min(r.width  + 8, frame.width()  - r.x),
                 Math.min(r.height + 8, frame.height() - r.y));
             Imgproc.rectangle(frame, expanded.tl(), expanded.br(), COLOR_GREEN, 2);
-            Imgproc.putText(frame, "PERSON", new Point(expanded.x, expanded.y - 6),
+            Imgproc.putText(frame, "PERSON #" + th.id, new Point(expanded.x, expanded.y - 6),
                 Imgproc.FONT_HERSHEY_SIMPLEX, 0.55, COLOR_GREEN, 2);
         }
 
         // Log if people found, with cooldown to avoid flooding the log
-        if (!people.isEmpty()) {
+        if (!trackedHumans.isEmpty()) {
             if (humanLogCooldown <= 0) {
+                StringBuilder ids = new StringBuilder();
+                for (TrackedHuman th : trackedHumans) ids.append("#").append(th.id).append(" ");
                 DetectionLogger.getInstance().log(
                     ModeManager.Mode.RESTRICTED_AREA.getDisplayName(),
                     "human_detected",
-                    "count=" + people.size() + " " + rectsToString(people));
+                    "count=" + trackedHumans.size() + " ids=[" + ids.toString().trim() + "]");
                 humanLogCooldown = LOG_COOLDOWN_FRAMES;
             }
         }
@@ -239,13 +296,5 @@ public class DetectionEngine {
             Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, color, 1);
     }
 
-    private String rectsToString(List<Rect> rects) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < rects.size(); i++) {
-            Rect r = rects.get(i);
-            if (i > 0) sb.append('|');
-            sb.append(String.format("(%d,%d,%d,%d)", r.x, r.y, r.width, r.height));
-        }
-        return sb.toString();
-    }
+
 }
