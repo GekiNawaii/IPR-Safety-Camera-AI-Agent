@@ -1,10 +1,17 @@
-# Root-level ignore
+# Root-level .gitignore
+# Ignore everything by default
+*
+
+# Allow the server folder and root-level config
+!/server/
+!/server/**
+!/.gitignore
+!/README.md
+
+# Specific system/IDE ignores (still needed for root)
 .venv/
 venv/
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
-
-# Ignore other subprojects if needed
-# frontend/
