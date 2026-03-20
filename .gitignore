@@ -17,17 +17,17 @@ ENV/
 .vscode/
 .idea/
 
-# YOLO/Dataset specific
-runs/
-datasets/
-*.pt
-*.cache
-yolo*_log.txt
-yolo_log.txt
+# YOLO/Dataset specific (now inside server/)
+server/runs/
+server/datasets/
+server/*.pt
+server/*.cache
+server/yolo*_log.txt
+server/yolo_log.txt
 
 # Exceptions to allow models
-!models/
-!models/*.pt
+!server/models/
+!server/models/*.pt
 
 # Project specific
 frontend/
@@ -40,5 +40,5 @@ safety_events.log
 ket_qua.jpg
 
 # Kept important files
-!backend/requirements.txt
+!server/requirements.txt
 !README.md

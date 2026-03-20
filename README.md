@@ -20,27 +20,32 @@ Hệ thống giám sát an toàn lao động dựa trên trí tuệ nhân tạo 
    ```
 
 2. **Cài đặt thư viện**:
+   Di chuyển vào thư mục server và cài đặt:
    ```bash
-   pip install -r backend/requirements.txt
+   cd server
+   pip install -r requirements.txt
    ```
 
-## Hướng dẫn sử dụng
+## Hướng dẫn sử dụng (Quan trọng: Chạy từ thư mục `server/`)
+
+Mọi lệnh dưới đây đều thực hiện sau khi thành viên đã `cd server`.
 
 ### 1. Huấn luyện Agent (Training)
-Nếu bạn có dataset mới, hãy nạp vào thư mục `datasets/` và chạy:
-- **PPE**: `python backend/train_agent.py --prep-ppe "đường/dẫn/dataset"`
-- **Té ngã**: `python backend/train_agent.py --prep-fall "đường/dẫn/dataset"`
+- **PPE**: `python train_agent.py --prep-ppe "../datasets/ppe_dataset"`
+- **Té ngã**: `python train_agent.py --prep-fall "../datasets/fall_dataset"`
 
 ### 2. Kiểm tra Agent (Inference)
-Sử dụng script `test_model.py` để chạy nhận diện lên các ảnh mẫu. Script mặc định sẽ tìm trong thư mục `models/`:
+Script mặc định sẽ tìm trong thư mục `models/` tại `server/models/`:
 - **PPE**: `python test_model.py --source "path/to/img" --model "models/ppe_best.pt"`
 - **Té ngã**: `python test_model.py --source "path/to/img" --model "models/fall_best.pt"`
 
 ## Cấu trúc thư mục
-- `backend/`: Chứa mã nguồn chính của AI Agent.
+Dự án được gom hoàn toàn vào thư mục `server/` để tách biệt với `client/`:
+- `server/`
+  - `models/`: Chứa các file trọng số AI đã được huấn luyện.
   - `safety_agent/`: Logic lõi xử lý Perception, Logic, Actions.
   - `train_agent.py`: Script huấn luyện.
-  - `main.py`: Entry point của server.
-- `models/`: **Quan trọng** - Chứa các file trọng số AI đã được huấn luyện (`ppe_best.pt`, `fall_best.pt`).
-- `datasets/`: (Tùy chọn) Chứa dữ liệu huấn luyện.
-- `runs/`: (Bị bỏ qua bởi git) Chứa kết quả huấn luyện và các file `.pt`.
+  - `test_model.py`: Script chạy thử.
+  - `main.py`: Entry point.
+  - `runs/`: Kết quả huấn luyện (bị git bỏ qua).
+  - `datasets/`: Dữ liệu (bị git bỏ qua).

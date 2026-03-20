@@ -1,0 +1,354 @@
+﻿Preparing PPE Dataset mapping from datasets\ppe_dataset\data...
+Detected 11 classes in dataset labels.
+Generated YAML configuration at: C:\WorkSpace\IPR\datasets\ppe_dataset\data\dataset.yaml
+Auto-switched base model to 'yolov8n.pt' for standard Object Detection.
+
+--- Retraining Agent Perception Layer ---
+Base Model: yolov8n.pt
+Dataset Config: C:\WorkSpace\IPR\datasets\ppe_dataset\data\dataset.yaml
+New https://pypi.org/project/ultralytics/8.4.23 available  Update with 'pip install -U ultralytics'
+Ultralytics 8.4.22  Python-3.11.9 torch-2.10.0+cpu CPU (11th Gen Intel Core i5-11400H @ 2.70GHz)
+[34m[1mengine\trainer: [0magnostic_nms=False, amp=True, angle=1.0, augment=False, auto_augment=randaugment, batch=16, bgr=0.0, box=7.5, cache=False, cfg=None, classes=None, close_mosaic=10, cls=0.5, compile=False, conf=None, copy_paste=0.0, copy_paste_mode=flip, cos_lr=False, cutmix=0.0, data=C:\WorkSpace\IPR\datasets\ppe_dataset\data\dataset.yaml, degrees=0.0, deterministic=True, device=cpu, dfl=1.5, dnn=False, dropout=0.0, dynamic=False, embed=None, end2end=None, epochs=1, erasing=0.4, exist_ok=True, fliplr=0.5, flipud=0.0, format=torchscript, fraction=1.0, freeze=None, half=False, hsv_h=0.015, hsv_s=0.7, hsv_v=0.4, imgsz=640, int8=False, iou=0.7, keras=False, kobj=1.0, line_width=None, lr0=0.01, lrf=0.01, mask_ratio=4, max_det=300, mixup=0.0, mode=train, model=yolov8n.pt, momentum=0.937, mosaic=1.0, multi_scale=0.0, name=train_1773759777, nbs=64, nms=False, opset=None, optimize=False, optimizer=auto, overlap_mask=True, patience=100, perspective=0.0, plots=True, pose=12.0, pretrained=True, profile=False, project=None, rect=False, resume=False, retina_masks=False, rle=1.0, save=True, save_conf=False, save_crop=False, save_dir=C:\WorkSpace\IPR\runs\detect\train_1773759777, save_frames=False, save_json=False, save_period=-1, save_txt=False, scale=0.5, seed=0, shear=0.0, show=False, show_boxes=True, show_conf=True, show_labels=True, simplify=True, single_cls=False, source=None, split=val, stream_buffer=False, task=detect, time=None, tracker=botsort.yaml, translate=0.1, val=True, verbose=True, vid_stride=1, visualize=False, warmup_bias_lr=0.1, warmup_epochs=3.0, warmup_momentum=0.8, weight_decay=0.0005, workers=8, workspace=None
+Overriding model.yaml nc=80 with nc=11
+
+                   from  n    params  module                                       arguments                     
+  0                  -1  1       464  ultralytics.nn.modules.conv.Conv             [3, 16, 3, 2]                 
+  1                  -1  1      4672  ultralytics.nn.modules.conv.Conv             [16, 32, 3, 2]                
+  2                  -1  1      7360  ultralytics.nn.modules.block.C2f             [32, 32, 1, True]             
+  3                  -1  1     18560  ultralytics.nn.modules.conv.Conv             [32, 64, 3, 2]                
+  4                  -1  2     49664  ultralytics.nn.modules.block.C2f             [64, 64, 2, True]             
+  5                  -1  1     73984  ultralytics.nn.modules.conv.Conv             [64, 128, 3, 2]               
+  6                  -1  2    197632  ultralytics.nn.modules.block.C2f             [128, 128, 2, True]           
+  7                  -1  1    295424  ultralytics.nn.modules.conv.Conv             [128, 256, 3, 2]              
+  8                  -1  1    460288  ultralytics.nn.modules.block.C2f             [256, 256, 1, True]           
+  9                  -1  1    164608  ultralytics.nn.modules.block.SPPF            [256, 256, 5]                 
+ 10                  -1  1         0  torch.nn.modules.upsampling.Upsample         [None, 2, 'nearest']          
+ 11             [-1, 6]  1         0  ultralytics.nn.modules.conv.Concat           [1]                           
+ 12                  -1  1    148224  ultralytics.nn.modules.block.C2f             [384, 128, 1]                 
+ 13                  -1  1         0  torch.nn.modules.upsampling.Upsample         [None, 2, 'nearest']          
+ 14             [-1, 4]  1         0  ultralytics.nn.modules.conv.Concat           [1]                           
+ 15                  -1  1     37248  ultralytics.nn.modules.block.C2f             [192, 64, 1]                  
+ 16                  -1  1     36992  ultralytics.nn.modules.conv.Conv             [64, 64, 3, 2]                
+ 17            [-1, 12]  1         0  ultralytics.nn.modules.conv.Concat           [1]                           
+ 18                  -1  1    123648  ultralytics.nn.modules.block.C2f             [192, 128, 1]                 
+ 19                  -1  1    147712  ultralytics.nn.modules.conv.Conv             [128, 128, 3, 2]              
+ 20             [-1, 9]  1         0  ultralytics.nn.modules.conv.Concat           [1]                           
+ 21                  -1  1    493056  ultralytics.nn.modules.block.C2f             [384, 256, 1]                 
+ 22        [15, 18, 21]  1    753457  ultralytics.nn.modules.head.Detect           [11, 16, None, [64, 128, 256]]
+Model summary: 130 layers, 3,012,993 parameters, 3,012,977 gradients, 8.2 GFLOPs
+
+Transferred 319/355 items from pretrained weights
+Freezing layer 'model.22.dfl.conv.weight'
+[34m[1mtrain: [0mFast image access  (ping: 0.10.1 ms, read: 589.1219.2 MB/s, size: 48.3 KB)
+
+[K[34m[1mtrain: [0mScanning C:\WorkSpace\IPR\datasets\ppe_dataset\data\labels\train.cache... 1132 images, 0 backgrounds, 0 corrupt: 100% ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 1132/1132  0.0s
+[34m[1mtrain: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\train\image187.jpg: 1 duplicate labels removed
+[34m[1mval: [0mFast image access  (ping: 0.00.0 ms, read: 1223.3720.7 MB/s, size: 103.6 KB)
+
+[K[34m[1mval: [0mScanning C:\WorkSpace\IPR\datasets\ppe_dataset\data\labels\val.cache... 143 images, 0 backgrounds, 143 corrupt: 100% ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 143/143  0.0s
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1010.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1046.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1049.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1055.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1057.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1072.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1083.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1085.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1091.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1096.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image11.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1107.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1109.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1121.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1129.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1130.jpg: ignoring corrupt image/label: Label class 10 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1137.jpg: ignoring corrupt image/label: Label class 8 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1146.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image115.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1151.jpg: ignoring corrupt image/label: Label class 8 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image117.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1183.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1190.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1193.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image12.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1203.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1211.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1215.jpg: ignoring corrupt image/label: Label class 8 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1217.jpg: ignoring corrupt image/label: Label class 8 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1223.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1234.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1248.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1273.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1290.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image130.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1301.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image132.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1333.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1341.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1342.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1346.jpg: ignoring corrupt image/label: Label class 8 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1369.jpg: ignoring corrupt image/label: Label class 10 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image137.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1375.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1377.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1392.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1397.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image1402.jpg: ignoring corrupt image/label: Label class 9 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image141.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image144.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image151.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image164.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image171.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image176.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image199.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image202.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image212.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image23.jpeg: ignoring corrupt image/label: Label class 5 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image230.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image238.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image253.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image259.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image27.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image270.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image278.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image31.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image318.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image329.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image330.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image337.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image347.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image35.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image355.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image360.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image391.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image392.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image395.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image396.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image407.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image411.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image419.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image430.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image439.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image446.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image46.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image464.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image487.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image505.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image508.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image524.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image532.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image547.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image573.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image576.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image607.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image608.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image615.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image627.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image628.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image640.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image644.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image65.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image654.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image656.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image660.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image666.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image669.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image670.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image674.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image680.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image686.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image698.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image705.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image709.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image719.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image74.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image742.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image749.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image759.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image762.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image763.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image767.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image771.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image798.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image804.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image808.jpg: ignoring corrupt image/label: Label class 3 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image824.jpg: ignoring corrupt image/label: Label class 2 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image826.jpg: ignoring corrupt image/label: Label class 2 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image852.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image867.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image868.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image876.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image885.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image896.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image897.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image9.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image933.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image942.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image955.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image961.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image981.jpeg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image989.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+[34m[1mval: [0mC:\WorkSpace\IPR\datasets\ppe_dataset\data\images\val\image997.jpg: ignoring corrupt image/label: Label class 6 exceeds dataset class count 2. Possible class labels are 0-1
+python : Traceback 
+(most recent call 
+last):
+At line:1 char:1
++ python backend\train
+_agent.py --prep-ppe "
+datasets\ppe_dataset\d
+ata"  ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (Traceback    
+ (most recent call    
+ last)::String) [    
+], RemoteExceptio    n
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+  File "C:\WorkSpace\I
+PR\backend\train_agent
+.py", line 72, in 
+<module>
+    train_agent(str(ge
+tattr(args, 'model', 
+'yolov8n.pt')), 
+yaml_path, 
+getattr(args, 
+'epochs', 50))
+  File "C:\WorkSpace\I
+PR\backend\train_agent
+.py", line 34, in 
+train_agent
+    model.train(data=d
+ata_yaml, 
+epochs=epochs, 
+imgsz=imgsz, 
+name=run_name, 
+exist_ok=True)
+  File "C:\Users\Admin
+\AppData\Roaming\Pytho
+n\Python311\site-packa
+ges\ultralytics\engine
+\model.py", line 777, 
+in train
+    
+self.trainer.train()
+  File "C:\Users\Admin
+\AppData\Roaming\Pytho
+n\Python311\site-packa
+ges\ultralytics\engine
+\trainer.py", line 
+244, in train
+    self._do_train()
+  File "C:\Users\Admin
+\AppData\Roaming\Pytho
+n\Python311\site-packa
+ges\ultralytics\engine
+\trainer.py", line 
+366, in _do_train
+    
+self._setup_train()
+  File "C:\Users\Admin
+\AppData\Roaming\Pytho
+n\Python311\site-packa
+ges\ultralytics\engine
+\trainer.py", line 
+348, in _setup_train
+    self._build_train_
+pipeline()
+  File "C:\Users\Admin
+\AppData\Roaming\Pytho
+n\Python311\site-packa
+ges\ultralytics\engine
+\trainer.py", line 
+273, in 
+_build_train_pipeline
+    self.test_loader 
+= self.get_dataloader(
+                      
+ ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin
+\AppData\Roaming\Pytho
+n\Python311\site-packa
+ges\ultralytics\models
+\yolo\detect\train.py"
+, line 93, in 
+get_dataloader
+    dataset = self.bui
+ld_dataset(dataset_pat
+h, mode, batch_size)
+              ^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin
+\AppData\Roaming\Pytho
+n\Python311\site-packa
+ges\ultralytics\models
+\yolo\detect\train.py"
+, line 77, in 
+build_dataset
+    return build_yolo_
+dataset(self.args, 
+img_path, batch, 
+self.data, mode=mode, 
+rect=mode == "val", 
+stride=gs)
+           ^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin
+\AppData\Roaming\Pytho
+n\Python311\site-packa
+ges\ultralytics\data\b
+uild.py", line 236, 
+in build_yolo_dataset
+    return dataset(
+           ^^^^^^^^
+  File "C:\Users\Admin
+\AppData\Roaming\Pytho
+n\Python311\site-packa
+ges\ultralytics\data\d
+ataset.py", line 88, 
+in __init__
+    super().__init__(*
+args, channels=self.da
+ta.get("channels", 
+3), **kwargs)
+  File "C:\Users\Admin
+\AppData\Roaming\Pytho
+n\Python311\site-packa
+ges\ultralytics\data\b
+ase.py", line 118, in 
+__init__
+    self.labels = 
+self.get_labels()
+                  
+^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin
+\AppData\Roaming\Pytho
+n\Python311\site-packa
+ges\ultralytics\data\d
+ataset.py", line 186, 
+in get_labels
+    raise 
+RuntimeError(
+RuntimeError: No 
+valid images found in 
+C:\WorkSpace\IPR\datas
+ets\ppe_dataset\data\l
+abels\val.cache. 
+Images with 
+incorrectly formatted 
+labels are ignored. 
+See https://docs.ultra
+lytics.com/datasets 
+for dataset 
+formatting guidance.
