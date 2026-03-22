@@ -1,0 +1,26 @@
+# Maven
+target/
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+dependency-reduced-pom.xml
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.settings/
+.project/
+.classpath/
+bin/
+
+# Logs
+*.log
+detections.log
+
+# Tools
+tools/
+maven/
