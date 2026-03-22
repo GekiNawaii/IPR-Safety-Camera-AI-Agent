@@ -1,0 +1,40 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS residuals
+.DS_Store
+Thumbs.db
+
+# Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+
+# YOLO/Dataset specific
+runs/
+datasets/
+*.pt
+*.cache
+yolo*_log.txt
+yolo_log.txt
+
+# Exceptions to allow models
+!models/
+!models/*.pt
+
+# Project specific (usually these stay at root, but if here, ignore siblings)
+../frontend/
+../docs/
+../doc_extract/
+../doc.zip
+
+# Kept important files
+!requirements.txt
+!README.md
