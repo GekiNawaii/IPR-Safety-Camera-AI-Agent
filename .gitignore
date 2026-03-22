@@ -1,17 +1,19 @@
-# Root-level .gitignore
-# Ignore everything by default
-*
-
-# Allow the server folder and root-level config
-!/server/
-!/server/**
-!/.gitignore
-!/README.md
-
-# Specific system/IDE ignores (still needed for root)
+# System/IDE
 .venv/
 venv/
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Other projects/files to exclude from server branch
+frontend/
+docs/
+ket_qua.jpg
+yolov8n.pt
+yolov8n-pose.pt
+yolo_log.txt
+
+# Ensure server is kept
+!server/
+!/.gitignore
