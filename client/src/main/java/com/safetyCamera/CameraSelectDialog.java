@@ -1,32 +1,36 @@
 package com.safetyCamera;
 
 import org.opencv.videoio.VideoCapture;
-import org.opencv.videoio.Videoio;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Modal camera-selection dialog.
- *
- * Probes camera indices 0–9 to find available cameras, presents them
- * in a styled combo-box, and stores the user's choice.
+ * Source selection dialog with 3 input modes (dropdown + CardLayout):
+ *   1. Camera thiết bị  – auto-detected local hardware cameras
+ *   2. IP Camera        – MJPEG/RTSP URL (phone app)
+ *   3. Video từ máy     – browse a local video file; OpenCV reads it like a camera
  */
 public class CameraSelectDialog extends JDialog {
 
-    private int selectedCameraIndex = -1;
+    private String selectedSource = null;
+
+    private static final String MODE_LOCAL = "Camera thiết bị";
+    private static final String MODE_IP    = "IP Camera (điện thoại)";
+    private static final String MODE_VIDEO = "Video từ máy tính";
 
     public CameraSelectDialog(Frame owner) {
-        super(owner, "Select Camera Input", true);
+        super(owner, "Chọn Nguồn Đầu Vào", true);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setSize(480, 320);
+        setSize(560, 360);
         setLocationRelativeTo(owner);
         setResizable(false);
 
-        JPanel root = new JPanel(new BorderLayout(0, 0));
+        JPanel root = new JPanel(new BorderLayout());
         root.setBackground(new Color(0x1A1A2E));
         setContentPane(root);
 
@@ -34,137 +38,198 @@ public class CameraSelectDialog extends JDialog {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(new Color(0x0F3460));
         header.setBorder(new EmptyBorder(12, 20, 12, 20));
-
-        JLabel title = new JLabel("\uD83C\uDFA5  Camera Selection");
+        JLabel title = new JLabel("🎥  Nguồn Camera / Video");
         title.setFont(new Font("Segoe UI", Font.BOLD, 16));
         title.setForeground(new Color(0x53C0F0));
         header.add(title, BorderLayout.WEST);
-        root.add(header, BorderLayout.NORTH);
 
-        // ── Centre ────────────────────────────────────────────────
-        JPanel centre = new JPanel(new GridBagLayout());
-        centre.setBackground(new Color(0x1A1A2E));
-        centre.setBorder(new EmptyBorder(20, 30, 10, 30));
+        // ── Mode row ──────────────────────────────────────────────
+        JPanel modeRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 14));
+        modeRow.setBackground(new Color(0x1A1A2E));
+        JLabel modeLabel = new JLabel("Chế độ:");
+        modeLabel.setForeground(new Color(0xE0E0E0));
+        modeLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(8, 8, 8, 8);
-        gbc.fill   = GridBagConstraints.HORIZONTAL;
+        JComboBox<String> modeCombo = new JComboBox<>(new String[]{MODE_LOCAL, MODE_IP, MODE_VIDEO});
+        modeCombo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        modeCombo.setBackground(new Color(0x0F3460));
+        modeCombo.setForeground(Color.WHITE);
+        modeCombo.setPreferredSize(new Dimension(270, 30));
+        modeRow.add(modeLabel);
+        modeRow.add(modeCombo);
 
-        JLabel scanLabel  = new JLabel("Scanning for available cameras…");
-        scanLabel.setForeground(new Color(0xAAAAAA));
-        scanLabel.setFont(new Font("Segoe UI", Font.ITALIC, 12));
-        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
-        centre.add(scanLabel, gbc);
+        JPanel topArea = new JPanel(new BorderLayout());
+        topArea.add(header, BorderLayout.NORTH);
+        topArea.add(modeRow, BorderLayout.CENTER);
+        root.add(topArea, BorderLayout.NORTH);
 
-        JLabel selectLabel = new JLabel("Select Camera:");
-        selectLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        selectLabel.setForeground(new Color(0xE0E0E0));
-        gbc.gridy = 1; gbc.gridwidth = 1;
-        centre.add(selectLabel, gbc);
+        // ── Card layout ───────────────────────────────────────────
+        CardLayout cards = new CardLayout();
+        JPanel cardPanel = new JPanel(cards);
+        cardPanel.setBackground(new Color(0x1A1A2E));
 
-        // Probe cameras on a background thread so the dialog isn't frozen
-        DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
-        JComboBox<String> cameraCombo = new JComboBox<>(model);
+        // ─ Card 1: Local Camera ───────────────────────────────────
+        DefaultComboBoxModel<String> cameraModel = new DefaultComboBoxModel<>();
+        JComboBox<String> cameraCombo = new JComboBox<>(cameraModel);
         cameraCombo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         cameraCombo.setBackground(new Color(0x0F3460));
         cameraCombo.setForeground(Color.WHITE);
-        gbc.gridx = 1;
-        centre.add(cameraCombo, gbc);
 
-        JLabel infoLabel = new JLabel("Tip: Use a camera with 720p or higher for best results.");
-        infoLabel.setForeground(new Color(0x888888));
-        infoLabel.setFont(new Font("Segoe UI", Font.ITALIC, 11));
-        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
-        centre.add(infoLabel, gbc);
+        JLabel scanLabel = new JLabel("Đang quét camera...");
+        scanLabel.setForeground(new Color(0xAAAAAA));
+        scanLabel.setFont(new Font("Segoe UI", Font.ITALIC, 11));
 
-        root.add(centre, BorderLayout.CENTER);
+        JPanel localCard = new JPanel(new GridBagLayout());
+        localCard.setBackground(new Color(0x1A1A2E));
+        localCard.setBorder(new EmptyBorder(24, 30, 10, 30));
+        GridBagConstraints g = new GridBagConstraints();
+        g.insets = new Insets(8, 8, 8, 8);
+        g.fill = GridBagConstraints.HORIZONTAL;
+        g.gridx = 0; g.gridy = 0;
+        localCard.add(lbl("Camera phát hiện được:"), g);
+        g.gridx = 1; g.weightx = 1.0;
+        localCard.add(cameraCombo, g);
+        g.gridx = 0; g.gridy = 1; g.gridwidth = 2; g.weightx = 0;
+        localCard.add(scanLabel, g);
+        cardPanel.add(localCard, MODE_LOCAL);
+
+        // ─ Card 2: IP Camera ──────────────────────────────────────
+        JTextField urlField = new JTextField("http://192.168.25.203:8080/video");
+        urlField.setFont(new Font("Segoe UI Mono", Font.PLAIN, 12));
+        urlField.setBackground(new Color(0x0F3460));
+        urlField.setForeground(Color.WHITE);
+        urlField.setCaretColor(Color.WHITE);
+
+        JPanel ipCard = new JPanel(new GridBagLayout());
+        ipCard.setBackground(new Color(0x1A1A2E));
+        ipCard.setBorder(new EmptyBorder(24, 30, 10, 30));
+        GridBagConstraints g2 = new GridBagConstraints();
+        g2.insets = new Insets(8, 8, 8, 8);
+        g2.fill = GridBagConstraints.HORIZONTAL;
+        g2.gridx = 0; g2.gridy = 0;
+        ipCard.add(lbl("URL Camera:"), g2);
+        g2.gridx = 1; g2.weightx = 1.0;
+        ipCard.add(urlField, g2);
+        g2.gridx = 0; g2.gridy = 1; g2.gridwidth = 2; g2.weightx = 0;
+        JLabel tipIP = new JLabel("💡 Dùng app \"IP Webcam\" (Android) rồi copy link từ app vào đây.");
+        tipIP.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+        tipIP.setForeground(new Color(0x888888));
+        ipCard.add(tipIP, g2);
+        cardPanel.add(ipCard, MODE_IP);
+
+        // ─ Card 3: Video File ─────────────────────────────────────
+        JTextField filePathField = new JTextField("Chưa chọn file...");
+        filePathField.setFont(new Font("Segoe UI Mono", Font.PLAIN, 12));
+        filePathField.setBackground(new Color(0x0F3460));
+        filePathField.setForeground(new Color(0x888888));
+        filePathField.setCaretColor(Color.WHITE);
+        filePathField.setEditable(false);
+
+        JButton browseBtn = new JButton("📂 Browse...");
+        browseBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        browseBtn.setBackground(new Color(0x1B4F72));
+        browseBtn.setForeground(new Color(0x76D7C4));
+        browseBtn.setFocusPainted(false);
+        browseBtn.setBorder(new EmptyBorder(6, 14, 6, 14));
+        browseBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        browseBtn.addActionListener(ev -> {
+            JFileChooser fc = new JFileChooser();
+            fc.setDialogTitle("Chọn video để phân tích");
+            fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Video (mp4, avi, mov, mkv)", "mp4", "avi", "mov", "mkv"));
+            if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+                File f = fc.getSelectedFile();
+                filePathField.setText(f.getAbsolutePath());
+                filePathField.setForeground(Color.WHITE);
+            }
+        });
+
+        JPanel videoCard = new JPanel(new GridBagLayout());
+        videoCard.setBackground(new Color(0x1A1A2E));
+        videoCard.setBorder(new EmptyBorder(24, 30, 10, 30));
+        GridBagConstraints g3 = new GridBagConstraints();
+        g3.insets = new Insets(8, 8, 8, 8);
+        g3.fill = GridBagConstraints.HORIZONTAL;
+        g3.gridx = 0; g3.gridy = 0;
+        videoCard.add(lbl("File video:"), g3);
+        g3.gridx = 1; g3.weightx = 1.0;
+        videoCard.add(filePathField, g3);
+        g3.gridx = 2; g3.weightx = 0;
+        videoCard.add(browseBtn, g3);
+        g3.gridx = 0; g3.gridy = 1; g3.gridwidth = 3;
+        JLabel tipVid = new JLabel("➡ Video sẽ được phát lại qua AI Detection y như camera thật.");
+        tipVid.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+        tipVid.setForeground(new Color(0x888888));
+        videoCard.add(tipVid, g3);
+        cardPanel.add(videoCard, MODE_VIDEO);
+
+        root.add(cardPanel, BorderLayout.CENTER);
+
+        // Switch card when mode changes
+        modeCombo.addActionListener(e -> cards.show(cardPanel, (String) modeCombo.getSelectedItem()));
 
         // ── Footer ────────────────────────────────────────────────
-        JButton startBtn  = new JButton("  Start Surveillance  ");
-        JButton cancelBtn = new JButton("Cancel");
+        JButton connectBtn = new JButton("  Kết nối & Bắt đầu  ");
+        JButton cancelBtn  = new JButton("Huỷ");
+        styleBtn(connectBtn, new Color(0x4CAF50), Color.WHITE);
+        styleBtn(cancelBtn,  new Color(0x333355), new Color(0xAAAAAA));
 
-        styleButton(startBtn,  new Color(0x4CAF50), Color.WHITE);
-        styleButton(cancelBtn, new Color(0x333355), new Color(0xAAAAAA));
-
-        startBtn.setEnabled(false); // enabled once cameras are found
-
-        startBtn.addActionListener(e -> {
-            String sel = (String) cameraCombo.getSelectedItem();
-            if (sel != null && sel.contains(" ")) {
-                try {
-                    // Format is "Camera [index] ..."
-                    String[] parts = sel.split(" ");
-                    if (parts.length >= 2) {
-                        selectedCameraIndex = Integer.parseInt(parts[1]);
-                    }
-                } catch (NumberFormatException nfe) {
-                    System.err.println("Failed to parse camera index from: " + sel);
+        connectBtn.addActionListener(e -> {
+            String mode = (String) modeCombo.getSelectedItem();
+            if (MODE_LOCAL.equals(mode)) {
+                String sel = (String) cameraCombo.getSelectedItem();
+                if (sel != null) selectedSource = sel.split(" ")[1]; // "Camera 0 ..." → "0"
+            } else if (MODE_IP.equals(mode)) {
+                selectedSource = urlField.getText().trim();
+            } else { // MODE_VIDEO
+                String path = filePathField.getText().trim();
+                if (path.isEmpty() || path.startsWith("Chưa")) {
+                    JOptionPane.showMessageDialog(this,
+                        "Vui lòng chọn file video trước!", "Thiếu file", JOptionPane.WARNING_MESSAGE);
+                    return;
                 }
+                selectedSource = path;
             }
             dispose();
         });
-
-        cancelBtn.addActionListener(e -> {
-            selectedCameraIndex = -1;
-            dispose();
-        });
+        cancelBtn.addActionListener(e -> { selectedSource = null; dispose(); });
 
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 12));
         footer.setBackground(new Color(0x1A1A2E));
         footer.add(cancelBtn);
-        footer.add(startBtn);
+        footer.add(connectBtn);
         root.add(footer, BorderLayout.SOUTH);
 
-        // ── Background camera probe ───────────────────────────────
-        SwingWorker<List<Integer>, Void> prober = new SwingWorker<>() {
-            @Override
-            protected List<Integer> doInBackground() {
+        // Probe local cameras in background
+        new SwingWorker<List<Integer>, Void>() {
+            @Override protected List<Integer> doInBackground() {
                 List<Integer> found = new ArrayList<>();
-                for (int i = 0; i <= 9; i++) {
+                for (int i = 0; i <= 3; i++) {
                     VideoCapture vc = new VideoCapture();
-                    try {
-                        if (vc.open(i)) {
-                            // Extra check: try to read a frame
-                            org.opencv.core.Mat test = new org.opencv.core.Mat();
-                            if (vc.read(test) && !test.empty()) {
-                                found.add(i);
-                            }
-                            test.release();
-                        }
-                    } finally {
-                        vc.release();
-                    }
+                    if (vc.open(i)) { found.add(i); vc.release(); }
                 }
                 return found;
             }
-
-            @Override
-            protected void done() {
+            @Override protected void done() {
                 try {
-                    List<Integer> cameras = get();
-                    if (cameras.isEmpty()) {
-                        scanLabel.setText("No cameras detected. Check connections and retry.");
-                        scanLabel.setForeground(new Color(0xE94560));
-                    } else {
-                        scanLabel.setText(cameras.size() + " camera(s) found.");
-                        scanLabel.setForeground(new Color(0x4CAF50));
-                        for (int idx : cameras) {
-                            String label = "Camera " + idx +
-                                (idx == 0 ? " – Built-in / Default" : " – USB / External");
-                            model.addElement(label);
-                        }
-                        startBtn.setEnabled(true);
-                    }
-                } catch (Exception ex) {
-                    scanLabel.setText("Error scanning cameras: " + ex.getMessage());
-                    scanLabel.setForeground(new Color(0xE94560));
-                }
+                    List<Integer> cams = get();
+                    for (int idx : cams)
+                        cameraModel.addElement("Camera " + idx + (idx == 0 ? " (Built-in)" : ""));
+                    scanLabel.setText(cams.size() + " camera sẵn sàng.");
+                    scanLabel.setForeground(cams.isEmpty() ? new Color(0xE94560) : new Color(0x4CAF50));
+                } catch (Exception ex) { scanLabel.setText("Lỗi quét camera."); }
             }
-        };
-        prober.execute();
+        }.execute();
     }
 
-    private void styleButton(JButton btn, Color bg, Color fg) {
+    private JLabel lbl(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        l.setForeground(new Color(0xE0E0E0));
+        return l;
+    }
+
+    private void styleBtn(JButton btn, Color bg, Color fg) {
         btn.setBackground(bg);
         btn.setForeground(fg);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -174,8 +239,8 @@ public class CameraSelectDialog extends JDialog {
             new EmptyBorder(6, 16, 6, 16)));
     }
 
-    /** Returns the chosen camera index, or -1 if the dialog was cancelled. */
-    public int getSelectedCameraIndex() {
-        return selectedCameraIndex;
+    /** Returns: camera index string ("0"), URL, or absolute video file path. Null if cancelled. */
+    public String getCameraSource() {
+        return selectedSource;
     }
 }

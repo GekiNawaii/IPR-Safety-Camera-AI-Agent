@@ -1,0 +1,19 @@
+# System/IDE
+.venv/
+venv/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Other projects/files to exclude from server branch
+frontend/
+docs/
+ket_qua.jpg
+yolov8n.pt
+yolov8n-pose.pt
+yolo_log.txt
+
+# Ensure server is kept
+!server/
+!/.gitignore

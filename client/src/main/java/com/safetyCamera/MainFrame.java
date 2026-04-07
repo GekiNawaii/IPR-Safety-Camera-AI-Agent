@@ -9,8 +9,8 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.beans.PropertyChangeEvent;
-import java.util.Set;
 import java.util.concurrent.*;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -48,7 +48,8 @@ public class MainFrame extends JFrame {
     private boolean              isLogVisible = false;
 
     // ── Camera / detection thread ──────────────────────────────────
-    private final VideoCapture   capture;
+    private VideoCapture     capture;    // local camera or video file
+    private IpCameraCapture  ipCapture;  // HTTP phone camera (bypasses OpenCV CV_IMAGES bug)
     private final DetectionEngine engine = new DetectionEngine();
     private final ScheduledExecutorService scheduler =
         Executors.newSingleThreadScheduledExecutor(r -> {
@@ -65,7 +66,7 @@ public class MainFrame extends JFrame {
 
     // ── Constructor ───────────────────────────────────────────────
 
-    public MainFrame(int cameraIndex) {
+    public MainFrame(String cameraSource) {
         super("IPR Safety Camera – Surveillance Monitor");
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setMinimumSize(new Dimension(880, 600));
@@ -82,6 +83,7 @@ public class MainFrame extends JFrame {
         setContentPane(root);
 
         // ── Top toolbar ───────────────────────────────────────────
+        modePopup = new ModeSelectorPopup(); // Initialize before buildToolbar
         JPanel toolbar = buildToolbar();
         root.add(toolbar, BorderLayout.NORTH);
 
@@ -114,9 +116,6 @@ public class MainFrame extends JFrame {
         statusBar.add(fpsLabel,    BorderLayout.EAST);
         root.add(statusBar, BorderLayout.SOUTH);
 
-        // ── Mode popup ────────────────────────────────────────────
-        modePopup = new ModeSelectorPopup();
-
         // ── Log panel ─────────────────────────────────────────────
         logArea = new JTextArea();
         logArea.setEditable(false);
@@ -144,20 +143,41 @@ public class MainFrame extends JFrame {
         ModeManager.getInstance().addPropertyChangeListener(this::onModeChange);
         updateStatusBar();
 
-        // ── Start camera ──────────────────────────────────────────
-        capture = new VideoCapture();
-        capture.open(cameraIndex);
-        capture.set(Videoio.CAP_PROP_FRAME_WIDTH,  1280);
-        capture.set(Videoio.CAP_PROP_FRAME_HEIGHT,  720);
+        // ── Start camera / source ─────────────────────────────────
+        boolean ready = false;
+        if (cameraSource.startsWith("http")) {
+            // HTTP URL: use Java HttpURLConnection fetcher (avoids OpenCV CV_IMAGES bug on Windows)
+            ipCapture = new IpCameraCapture(cameraSource);
+            ready     = ipCapture.isConnected();
+        } else {
+            // Local camera index or video file
+            capture = new VideoCapture();
+            try {
+                ready = cameraSource.matches("\\d+")
+                    ? capture.open(Integer.parseInt(cameraSource))
+                    : capture.open(cameraSource);
+            } catch (Exception e) {
+                System.err.println("Error opening camera source: " + cameraSource);
+            }
+        }
 
-        if (!capture.isOpened()) {
+        if (!ready) {
             JOptionPane.showMessageDialog(this,
-                "Could not open camera " + cameraIndex + ".\nCheck connection and restart.",
+                "Could not open: " + cameraSource + "\n\n" +
+                "TIPS:\n" +
+                "1. For IP Webcam: ensure phone and PC are on the same Wi-Fi.\n" +
+                "2. Open http://<phone-ip>:8080 in browser to verify stream.\n" +
+                "3. For camera/video: ensure device is not used by another app.",
                 "Camera Error", JOptionPane.ERROR_MESSAGE);
         } else {
+            if (capture != null) {
+                capture.set(Videoio.CAP_PROP_FRAME_WIDTH,  1280);
+                capture.set(Videoio.CAP_PROP_FRAME_HEIGHT,  720);
+            }
             startCaptureLoop();
         }
     }
+
 
     // ── Toolbar builder ───────────────────────────────────────────
 
@@ -263,6 +283,25 @@ public class MainFrame extends JFrame {
 
         right.add(liveLabel);
         right.add(Box.createHorizontalStrut(6));
+
+        // Back button – stop capture and return to source selection
+        JButton backBtn = new JButton("← Back");
+        backBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        backBtn.setBackground(new Color(0x2C2C4A));
+        backBtn.setForeground(new Color(0xAAAAAA));
+        backBtn.setFocusPainted(false);
+        backBtn.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(0x3A3A5C), 1),
+            new EmptyBorder(6, 14, 6, 14)));
+        backBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        backBtn.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { backBtn.setBackground(new Color(0x3A3A5C)); }
+            @Override public void mouseExited(MouseEvent e)  { backBtn.setBackground(new Color(0x2C2C4A)); }
+        });
+        backBtn.addActionListener(e -> goBack());
+
+        right.add(backBtn);
+        right.add(Box.createHorizontalStrut(6));
         right.add(toggleLogBtn);
         right.add(Box.createHorizontalStrut(6));
         right.add(modesBtn);
@@ -270,6 +309,22 @@ public class MainFrame extends JFrame {
 
         return bar;
     }
+
+    /** Stop current capture, close this window and re-open the source selection dialog. */
+    private void goBack() {
+        if (captureTask != null) captureTask.cancel(true);
+        if (capture != null && capture.isOpened()) capture.release();
+        if (ipCapture != null) ipCapture.release();
+        dispose();
+        SwingUtilities.invokeLater(() -> {
+            CameraSelectDialog dialog = new CameraSelectDialog(null);
+            dialog.setVisible(true);
+            String source = dialog.getCameraSource();
+            if (source != null) new MainFrame(source).setVisible(true);
+        });
+    }
+
+
 
     // ── Camera capture loop ───────────────────────────────────────
 
@@ -280,26 +335,24 @@ public class MainFrame extends JFrame {
     }
 
     private void captureAndProcess() {
-        if (!capture.isOpened()) return;
+        Mat frame;
 
-        Mat frame = new Mat();
-        if (!capture.read(frame) || frame.empty()) {
-            frame.release();
-            return;
+        if (ipCapture != null) {
+            // HTTP-based IP camera
+            frame = ipCapture.readFrame();
+            if (frame == null || frame.empty()) return;
+        } else {
+            // Local camera or video file via OpenCV VideoCapture
+            if (capture == null || !capture.isOpened()) return;
+            frame = new Mat();
+            if (!capture.read(frame) || frame.empty()) {
+                frame.release();
+                return;
+            }
         }
 
         // Run detection engine (modifies frame in-place)
-        int countBefore = totalDetections.get();
         engine.process(frame);
-
-        // Detect whether a new person was found this frame (simple heuristic:
-        // check if log was written – we track it via the logger's call count proxy
-        // by checking frame content. Instead, we simply increment on each processed frame
-        // if Restricted Area is active and any bounding box was drawn.
-        // For simplicity the counter tracks processed frames with active detection.
-        if (ModeManager.getInstance().isActive(ModeManager.Mode.RESTRICTED_AREA)) {
-            // We'll let DetectionEngine track real counts; here approximate with frame count
-        }
 
         // Push frame to display
         cameraPanel.updateFrame(frame);
@@ -325,41 +378,27 @@ public class MainFrame extends JFrame {
     }
 
     private void updateStatusBar() {
-        Set<ModeManager.Mode> active = ModeManager.getInstance().getActiveModes();
-
-        if (active.isEmpty()) {
-            statusLabel.setForeground(new Color(0x888888));
-            statusLabel.setText("⬤  No mode active");
-        } else {
-            StringBuilder sb   = new StringBuilder();
-            Color          col = new Color(0x888888);
-
-            boolean first = true;
-            for (ModeManager.Mode m : ModeManager.Mode.values()) {
-                if (!active.contains(m)) continue;
-                if (!first) sb.append("  |  ");
-                first = false;
-
-                switch (m) {
-                    case RESTRICTED_AREA -> { sb.append("🟢 Restricted Area Detection"); col = new Color(0x4CAF50); }
-                    case SAFETY_GEAR     -> { sb.append("🟠 Safety Gear Recognition");  col = new Color(0xFF9800); }
-                    case FALLING_DETECTION->{ sb.append("🔴 Falling Detection");         col = new Color(0xF44336); }
-                }
-            }
-            statusLabel.setForeground(col);
-            statusLabel.setText(sb.toString());
+        ModeManager.Mode mode = ModeManager.getInstance().getActiveMode();
+        String text;
+        Color  col;
+        switch (mode) {
+            case SAFETY_GEAR       -> { text = "🛡  Safety Gear Recognition";  col = new Color(0xFF9800); }
+            case FALLING_DETECTION -> { text = "⚠  Falling Detection";          col = new Color(0xF44336); }
+            case RESTRICTED_AREA   -> { text = "🟢 Restricted Area Detection";  col = new Color(0x4CAF50); }
+            default                -> { text = "⬜  AI Detection: OFF";          col = new Color(0x888888); }
         }
-
+        statusLabel.setForeground(col);
+        statusLabel.setText(text);
         detectionCountLabel.setText("  |  Log: detections.log");
     }
 
     // ── Shutdown ──────────────────────────────────────────────────
 
     private void shutdown() {
-        if (captureTask != null) captureTask.cancel(true);
-        scheduler.shutdownNow();
-        if (capture != null && capture.isOpened()) capture.release();
-        dispose();
-        System.exit(0);
+        // Force exit immediately. 
+        // Calling capture.release() on OpenCV Windows MSMF can deadlock the EDT.
+        // Furthermore, System.exit(0) can deadlock in openpnp's OpenCV native cleanup hook.
+        // The OS will automatically release webcam handles, threads, and memory.
+        Runtime.getRuntime().halt(0);
     }
 }

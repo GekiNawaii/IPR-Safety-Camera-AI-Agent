@@ -5,20 +5,26 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.util.Set;
 
 /**
- * Top-right dropdown that lets the user enable / disable detection modes
- * via checkboxes. Enforces the mutual-exclusion rule by listening to
- * {@link ModeManager} and keeping checkbox states in sync.
+ * Top-right dropdown that lets the user switch between AI detection modes.
+ *
+ * UI uses Radio-button style menu items so exactly ONE mode is active at a time:
+ *   ⬜  OFF              – no AI inference
+ *   🛡  Safety Gear      – run PPE model (helmet / vest)
+ *   ⚠  Falling Detection – run pose model (keypoints)
+ *   ─────────────────────────────────────── (separator)
+ *   🔴  Restricted Area  – DISABLED / coming soon
  */
 public class ModeSelectorPopup extends JPopupMenu implements PropertyChangeListener {
 
-    private final JCheckBoxMenuItem restrictedItem;
-    private final JCheckBoxMenuItem safetyGearItem;
-    private final JCheckBoxMenuItem fallingItem;
+    private final ButtonGroup group = new ButtonGroup();
 
-    /** Flag to suppress re-entrant events while we're updating checkboxes programmatically. */
+    private final JRadioButtonMenuItem offItem;
+    private final JRadioButtonMenuItem safetyGearItem;
+    private final JRadioButtonMenuItem fallingItem;
+    private final JMenuItem            restrictedItem;   // always disabled
+
     private boolean updating = false;
 
     public ModeSelectorPopup() {
@@ -27,105 +33,83 @@ public class ModeSelectorPopup extends JPopupMenu implements PropertyChangeListe
             BorderFactory.createLineBorder(new Color(0x0F3460), 1),
             new EmptyBorder(4, 0, 4, 0)));
 
-        // ── Header label ──────────────────────────────────────────
-        JLabel header = new JLabel("  \uD83D\uDEE1  Detection Modes");
+        // ── Header ────────────────────────────────────────────────────────────
+        JLabel header = new JLabel("  🛡  Detection Mode");
         header.setFont(new Font("Segoe UI", Font.BOLD, 13));
         header.setForeground(new Color(0x53C0F0));
         header.setBorder(new EmptyBorder(6, 12, 6, 12));
         add(header);
         addSeparator();
 
-        // ── Restricted Area (exclusive) ───────────────────────────
-        restrictedItem = buildCheckItem(
-            "\u2B24  Restricted Area Detection",
-            new Color(0x4CAF50),
-            "Detects humans in the monitored area. EXCLUSIVE – disables other modes.");
-        restrictedItem.setSelected(true); // default ON
-        restrictedItem.addActionListener(e -> handleCheck(
-            ModeManager.Mode.RESTRICTED_AREA, restrictedItem.isSelected()));
-        add(restrictedItem);
+        // ── OFF ───────────────────────────────────────────────────────────────
+        offItem = buildRadio("⬜  OFF  (No Detection)", new Color(0x888888),
+                             "Camera streams but AI model is paused.");
+        offItem.addActionListener(e -> handleSelect(ModeManager.Mode.OFF));
+        group.add(offItem);
+        add(offItem);
 
         addSeparator();
 
-        // ── Safety Gear ────────────────────────────────────────────
-        safetyGearItem = buildCheckItem(
-            "\uD83D\uDEE2  Safety Gear Recognition",
-            new Color(0xFF9800),
-            "Flags workers missing required PPE.");
-        safetyGearItem.addActionListener(e -> handleCheck(
-            ModeManager.Mode.SAFETY_GEAR, safetyGearItem.isSelected()));
+        // ── Safety Gear ───────────────────────────────────────────────────────
+        safetyGearItem = buildRadio("🛡  Safety Gear Recognition", new Color(0xFF9800),
+                                    "Detects missing helmets and safety vests.");
+        safetyGearItem.addActionListener(e -> handleSelect(ModeManager.Mode.SAFETY_GEAR));
+        group.add(safetyGearItem);
         add(safetyGearItem);
 
-        // ── Falling Detection ──────────────────────────────────────
-        fallingItem = buildCheckItem(
-            "\u26A0  Falling Detection",
-            new Color(0xF44336),
-            "Alerts when a person falls or collapses.");
-        fallingItem.addActionListener(e -> handleCheck(
-            ModeManager.Mode.FALLING_DETECTION, fallingItem.isSelected()));
+        // ── Falling Detection ─────────────────────────────────────────────────
+        fallingItem = buildRadio("⚠  Falling Detection", new Color(0xF44336),
+                                 "Detects when a worker falls or collapses.");
+        fallingItem.addActionListener(e -> handleSelect(ModeManager.Mode.FALLING_DETECTION));
+        group.add(fallingItem);
         add(fallingItem);
 
         addSeparator();
 
-        // ── Info footer ───────────────────────────────────────────
-        JLabel info = new JLabel("  Restricted Area is exclusive");
-        info.setFont(new Font("Segoe UI", Font.ITALIC, 10));
-        info.setForeground(new Color(0x666688));
-        info.setBorder(new EmptyBorder(4, 12, 4, 12));
-        add(info);
+        // ── Restricted Area (disabled placeholder) ────────────────────────────
+        restrictedItem = new JMenuItem("🔴  Restricted Area  (coming soon)");
+        restrictedItem.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        restrictedItem.setForeground(new Color(0x555566));
+        restrictedItem.setBackground(new Color(0x16213E));
+        restrictedItem.setOpaque(true);
+        restrictedItem.setBorder(new EmptyBorder(6, 14, 6, 14));
+        restrictedItem.setEnabled(false);
+        add(restrictedItem);
 
-        // Listen to ModeManager so checkboxes stay in sync with
-        // programmatic changes (e.g. mutual exclusion)
+        // Sync UI with initial manager state
+        syncFromManager();
         ModeManager.getInstance().addPropertyChangeListener(this);
     }
 
-    // ── User action handler ───────────────────────────────────────
+    // ── Event handling ────────────────────────────────────────────────────────
 
-    private void handleCheck(ModeManager.Mode mode, boolean selected) {
+    private void handleSelect(ModeManager.Mode mode) {
         if (updating) return;
-        ModeManager.getInstance().setActive(mode, selected);
-        // ModeManager fires propertyChange → syncFromManager() will update visuals
+        ModeManager.getInstance().setActiveMode(mode);
     }
-
-    // ── PropertyChangeListener (from ModeManager) ─────────────────
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (!"modes".equals(evt.getPropertyName())) return;
+        if (!"activeMode".equals(evt.getPropertyName())) return;
         SwingUtilities.invokeLater(this::syncFromManager);
     }
 
-    /** Refresh checkbox states and enabled-status from ModeManager truth. */
     private void syncFromManager() {
         updating = true;
         try {
-            ModeManager mm = ModeManager.getInstance();
-            Set<ModeManager.Mode> active = mm.getActiveModes();
-
-            boolean restrictedOn = active.contains(ModeManager.Mode.RESTRICTED_AREA);
-
-            restrictedItem.setSelected(restrictedOn);
-            safetyGearItem.setSelected(active.contains(ModeManager.Mode.SAFETY_GEAR));
-            fallingItem.setSelected(active.contains(ModeManager.Mode.FALLING_DETECTION));
-
-            // Disable Safety Gear and Falling when Restricted Area is ON
-            safetyGearItem.setEnabled(!restrictedOn);
-            fallingItem.setEnabled(!restrictedOn);
-
-            // Disable Restricted Area when others are ON
-            boolean othersOn = active.contains(ModeManager.Mode.SAFETY_GEAR)
-                            || active.contains(ModeManager.Mode.FALLING_DETECTION);
-            restrictedItem.setEnabled(!othersOn);
-
+            ModeManager.Mode active = ModeManager.getInstance().getActiveMode();
+            offItem.setSelected(active == ModeManager.Mode.OFF);
+            safetyGearItem.setSelected(active == ModeManager.Mode.SAFETY_GEAR);
+            fallingItem.setSelected(active == ModeManager.Mode.FALLING_DETECTION);
         } finally {
             updating = false;
         }
     }
 
-    // ── Builder helper ────────────────────────────────────────────
+    // ── Builder ───────────────────────────────────────────────────────────────
 
-    private JCheckBoxMenuItem buildCheckItem(String text, Color fg, String tooltip) {
-        JCheckBoxMenuItem item = new JCheckBoxMenuItem(text);
+    private JRadioButtonMenuItem buildRadio(String text, Color fg, String tooltip) {
+        JRadioButtonMenuItem item = new JRadioButtonMenuItem(text);
         item.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         item.setForeground(fg);
         item.setBackground(new Color(0x16213E));

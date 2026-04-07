@@ -50,18 +50,16 @@ public class Main {
             guide.setVisible(true);
 
             // Step 2: Camera selection
-            CameraSelectDialog camSelect = new CameraSelectDialog(null);
-            camSelect.setVisible(true);
+            CameraSelectDialog dialog = new CameraSelectDialog(null);
+            dialog.setVisible(true);
 
-            int cameraIndex = camSelect.getSelectedCameraIndex();
-            if (cameraIndex < 0) {
-                // User cancelled
-                System.exit(0);
+            String source = dialog.getCameraSource();
+            if (source == null) {
+                Runtime.getRuntime().halt(0);
             }
 
             // Step 3: Launch main surveillance window
-            MainFrame frame = new MainFrame(cameraIndex);
-            frame.setVisible(true);
+            new MainFrame(source).setVisible(true);
         });
     }
 }
