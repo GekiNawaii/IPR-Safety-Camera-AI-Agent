@@ -2,3 +2,6 @@ ultralytics
 opencv-python
 numpy
 shapely
+fastapi
+uvicorn
+python-multipart

@@ -1,300 +1,219 @@
 package com.safetyCamera;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import org.opencv.core.*;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.objdetect.HOGDescriptor;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 /**
- * Offline detection engine.
+ * AI Detection Engine – v2 (Clean Violations API).
  *
- * <b>Human detection:</b> OpenCV HOGDescriptor + default SVM pedestrian model.
- *   Runs entirely on CPU, no network or AI API required.
+ * New JSON contract from Python server:
+ * {
+ *   "violations": [
+ *     { "type": "SAFE",          "person_bbox": [x1,y1,x2,y2], "safe": true,  "details": [] },
+ *     { "type": "MISSING_PPE",   "person_bbox": [x1,y1,x2,y2], "safe": false, "details": ["helmet"] },
+ *     { "type": "FALL_DETECTED", "person_bbox": [x1,y1,x2,y2], "safe": false, "details": ["Person may have fallen"] }
+ *   ]
+ * }
  *
- * <b>Motion detection:</b> Frame-differencing (absolute pixel diff + threshold).
- *
- * Detection results are drawn directly onto the supplied Mat frame.
+ * Rendering rules:
+ *   SAFE         → thick GREEN  box  (no label)
+ *   MISSING_PPE  → thick RED    box  + label "! Missing: helmet, vest"
+ *   FALL_DETECTED→ thick RED    box  + label "⚠ FALL"
  */
 public class DetectionEngine {
 
-    // ── HOG people detector ───────────────────────────────────────
-    private final HOGDescriptor hog;
+    private final HttpClient httpClient;
+    private final Gson       gson;
+    private static final String SERVER_URL = "http://localhost:8000/detect";
 
-    // ── Human Tracking ────────────────────────────────────────────
-    private static class TrackedHuman {
-        int id;
-        Rect rect;
-        int missedFrames;
+    // BGR colours for OpenCV
+    private static final Scalar GREEN  = new Scalar( 40, 210,  40);   // safe
+    private static final Scalar RED    = new Scalar( 40,  40, 255);   // violation
+    private static final Scalar WHITE  = new Scalar(240, 240, 240);   // status bar
+    private static final Scalar BLACK  = new Scalar(  0,   0,   0);
 
-        TrackedHuman(int id, Rect rect) {
-            this.id = id;
-            this.rect = rect;
-            this.missedFrames = 0;
-        }
-
-        Point getCentroid() {
-            return new Point(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
-        }
-    }
-
-    private int nextHumanId = 1;
-    private final List<TrackedHuman> trackedHumans = new ArrayList<>();
-
-    // ── Motion detection state ─────────────────────────────────────
-    private Mat previousFrame = null;
-
-    // ── Colours (BGR for OpenCV) ───────────────────────────────────
-    private static final Scalar COLOR_GREEN  = new Scalar( 50, 220,  50);   // person box
-    private static final Scalar COLOR_ORANGE = new Scalar( 50, 165, 255);   // safety gear stub
-    private static final Scalar COLOR_RED    = new Scalar( 50,  50, 255);   // fall stub
-    private static final Scalar COLOR_MOTION = new Scalar(200, 200,  50);   // motion indicator
-
-    // ── HOG tuning parameters ─────────────────────────────────────
-    /** Hit-threshold for the SVM. Lower = more detections, more false positives. */
-    private static final double HIT_THRESHOLD    = 0.0;
-    /** Sliding-window stride. Smaller = more thorough but slower. */
-    private static final Size   WIN_STRIDE       = new Size(8, 8);
-    /** Padding around each window. */
-    private static final Size   PADDING          = new Size(4, 4);
-    /** Scale factor between pyramid levels. */
-    private static final double SCALE            = 1.05;
-    /** Minimum group count to suppress duplicates. */
-    private static final double FINAL_THRESHOLD  = 2.0;
-
-    // ── Motion detection parameters ───────────────────────────────
-    /** Pixel-difference threshold (0-255) to count as "changed". */
-    private static final int    MOTION_THRESHOLD  = 25;
-    /** Minimum changed-pixel fraction (0-1) to trigger motion event. */
-    private static final double MOTION_MIN_RATIO  = 0.005; // 0.5 %
-
-    private static final int LOG_COOLDOWN_FRAMES = 30; // ~2 s at 15 fps
-    private int humanLogCooldown  = 0;
-    private int motionLogCooldown = 0;
+    // Throttle logging: only log every ONCE per ALERT_LOG_INTERVAL_MS
+    private final java.util.Map<String, Long> lastLogTime = new java.util.HashMap<>();
+    private static final long ALERT_LOG_INTERVAL_MS = 2000;
 
     public DetectionEngine() {
-        hog = new HOGDescriptor();
-        hog.setSVMDetector(HOGDescriptor.getDefaultPeopleDetector());
+        this.httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
+        this.gson = new Gson();
     }
-
-    // ── Public API ────────────────────────────────────────────────
 
     /**
-     * Process one video frame according to currently active modes.
-     * Modifies {@code frame} in-place (draws overlays).
-     *
-     * @param frame the camera frame (BGR, original size)
+     * Send {@code frame} to the AI server and draw detection overlays in-place.
+     * Called from the camera capture thread.
      */
     public synchronized void process(Mat frame) {
-        ModeManager mm = ModeManager.getInstance();
+        if (frame.empty()) return;
 
-        if (mm.isActive(ModeManager.Mode.RESTRICTED_AREA)) {
-            processRestrictedArea(frame);
-        }
-        if (mm.isActive(ModeManager.Mode.SAFETY_GEAR)) {
-            processSafetyGearStub(frame);
-        }
-        if (mm.isActive(ModeManager.Mode.FALLING_DETECTION)) {
-            processFallingStub(frame);
-        }
-
-        // Always run motion detection in the background for logging
-        detectMotion(frame);
-    }
-
-    // ── Restricted Area Detection ─────────────────────────────────
-
-    private void processRestrictedArea(Mat frame) {
-        List<Rect> people = detectPeople(frame);
-        List<TrackedHuman> newTracked = new ArrayList<>();
-
-        for (Rect r : people) {
-            Point centroid = new Point(r.x + r.width / 2.0, r.y + r.height / 2.0);
-            TrackedHuman bestMatch = null;
-            double bestDist = Double.MAX_VALUE;
-
-            for (TrackedHuman th : trackedHumans) {
-                double dist = Math.hypot(centroid.x - th.getCentroid().x, centroid.y - th.getCentroid().y);
-                if (dist < 150 && dist < bestDist) { // 150 pixels distance threshold
-                    bestDist = dist;
-                    bestMatch = th;
-                }
-            }
-
-            if (bestMatch != null) {
-                bestMatch.rect = r;
-                bestMatch.missedFrames = 0;
-                newTracked.add(bestMatch);
-                trackedHumans.remove(bestMatch); // prevent multiple matches to same old track
-            } else {
-                newTracked.add(new TrackedHuman(nextHumanId++, r));
-            }
-        }
-
-        for (TrackedHuman th : trackedHumans) {
-            th.missedFrames++;
-            if (th.missedFrames < 5) {
-                newTracked.add(th); // keep alive for a few frames if missed
-            }
-        }
-
-        trackedHumans.clear();
-        trackedHumans.addAll(newTracked);
-
-        // Draw green bounding boxes for tracked humans
-        for (TrackedHuman th : trackedHumans) {
-            Rect r = th.rect;
-            // Slightly expand box for visual comfort
-            Rect expanded = new Rect(
-                Math.max(0, r.x - 4), Math.max(0, r.y - 4),
-                Math.min(r.width  + 8, frame.width()  - r.x),
-                Math.min(r.height + 8, frame.height() - r.y));
-            Imgproc.rectangle(frame, expanded.tl(), expanded.br(), COLOR_GREEN, 2);
-            Imgproc.putText(frame, "PERSON #" + th.id, new Point(expanded.x, expanded.y - 6),
-                Imgproc.FONT_HERSHEY_SIMPLEX, 0.55, COLOR_GREEN, 2);
-        }
-
-        // Log if people found, with cooldown to avoid flooding the log
-        if (!trackedHumans.isEmpty()) {
-            if (humanLogCooldown <= 0) {
-                StringBuilder ids = new StringBuilder();
-                for (TrackedHuman th : trackedHumans) ids.append("#").append(th.id).append(" ");
-                DetectionLogger.getInstance().log(
-                    ModeManager.Mode.RESTRICTED_AREA.getDisplayName(),
-                    "human_detected",
-                    "count=" + trackedHumans.size() + " ids=[" + ids.toString().trim() + "]");
-                humanLogCooldown = LOG_COOLDOWN_FRAMES;
-            }
-        }
-        if (humanLogCooldown > 0) humanLogCooldown--;
-
-        // Mode label overlay
-        drawModeLabel(frame, "RESTRICTED AREA DETECTION", COLOR_GREEN, 0);
-    }
-
-    // ── Safety Gear Recognition (stub) ────────────────────────────
-
-    private void processSafetyGearStub(Mat frame) {
-        drawModeLabel(frame, "SAFETY GEAR RECOGNITION  [Coming Soon]", COLOR_ORANGE,
-            mm.isActive(ModeManager.Mode.SAFETY_GEAR) ? 1 : 0);
-        drawStubOverlay(frame, "Safety Gear Recognition – Full detection coming soon",
-            COLOR_ORANGE);
-    }
-
-    // ── Falling Detection (stub) ──────────────────────────────────
-
-    private void processFallingStub(Mat frame) {
-        drawModeLabel(frame, "FALLING DETECTION  [Coming Soon]", COLOR_RED,
-            mm.isActive(ModeManager.Mode.FALLING_DETECTION) ? 2 : 0);
-        drawStubOverlay(frame, "Falling Detection – Full detection coming soon",
-            COLOR_RED);
-    }
-
-    // ── Motion detection (always-on, logging only) ────────────────
-
-    private void detectMotion(Mat frame) {
-        Mat grey = new Mat();
-        Imgproc.cvtColor(frame, grey, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.GaussianBlur(grey, grey, new Size(21, 21), 0);
-
-        if (previousFrame == null) {
-            previousFrame = grey;
+        // Skip AI entirely when mode is OFF
+        ModeManager.Mode mode = ModeManager.getInstance().getActiveMode();
+        if (mode == ModeManager.Mode.OFF) {
+            drawStatusBar(frame, "AI Detection: OFF", WHITE);
             return;
         }
 
-        Mat diff = new Mat();
-        Core.absdiff(previousFrame, grey, diff);
-        Imgproc.threshold(diff, diff, MOTION_THRESHOLD, 255, Imgproc.THRESH_BINARY);
+        try {
+            // Encode frame as JPEG
+            MatOfByte buf = new MatOfByte();
+            Imgcodecs.imencode(".jpg", frame, buf, new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 80));
+            byte[] imageBytes = buf.toArray();
 
-        int changedPixels = Core.countNonZero(diff);
-        double totalPixels = frame.width() * (double) frame.height();
-        double ratio = changedPixels / totalPixels;
+            String boundary = "---Boundary" + System.currentTimeMillis();
+            byte[] body     = buildMultipart(imageBytes, "frame.jpg", boundary, mode.name());
 
-        if (ratio > MOTION_MIN_RATIO) {
-            // Draw subtle motion indicator in corner
-            Imgproc.circle(frame, new Point(frame.width() - 20, 20), 8, COLOR_MOTION, -1);
-            Imgproc.putText(frame, "MOTION", new Point(frame.width() - 80, 25),
-                Imgproc.FONT_HERSHEY_SIMPLEX, 0.45, COLOR_MOTION, 1);
+            HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(SERVER_URL))
+                .timeout(Duration.ofSeconds(8))
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+                .build();
 
-            if (motionLogCooldown <= 0) {
-                DetectionLogger.getInstance().log(
-                    "SYSTEM", "motion_detected",
-                    String.format("changed_ratio=%.3f", ratio));
-                motionLogCooldown = LOG_COOLDOWN_FRAMES;
+            HttpResponse<String> resp =
+                httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+
+            if (resp.statusCode() == 200) {
+                drawViolations(frame, resp.body());
+            } else {
+                drawStatusBar(frame, "Server error " + resp.statusCode(), RED);
+            }
+
+        } catch (java.lang.InterruptedException ie) {
+            Thread.currentThread().interrupt();   // restore flag, don't print stack
+        } catch (Exception e) {
+            System.err.println("[DetectionEngine] " + e.getMessage());
+            drawStatusBar(frame, "AI SERVER OFFLINE", RED);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private void drawViolations(Mat frame, String json) {
+        JsonObject root = gson.fromJson(json, JsonObject.class);
+        JsonArray  violations = root.getAsJsonArray("violations");
+        if (violations == null) return;
+
+        int vCount = 0;
+
+        for (JsonElement el : violations) {
+            JsonObject v = el.getAsJsonObject();
+            String type  = v.get("type").getAsString();
+            boolean safe = v.get("safe").getAsBoolean();
+
+            JsonArray bboxArr = v.getAsJsonArray("person_bbox");
+            double x1 = bboxArr.get(0).getAsDouble();
+            double y1 = bboxArr.get(1).getAsDouble();
+            double x2 = bboxArr.get(2).getAsDouble();
+            double y2 = bboxArr.get(3).getAsDouble();
+
+            Scalar colour = safe ? GREEN : RED;
+            int    thick  = safe ? 2 : 3;
+
+            // Draw bounding box
+            Imgproc.rectangle(frame, new Point(x1, y1), new Point(x2, y2), colour, thick);
+
+            // Draw label only for violations
+            if (!safe) {
+                String label = buildLabel(v, type);
+                // Background rectangle for readability
+                int fontFace  = Imgproc.FONT_HERSHEY_SIMPLEX;
+                double fontSc = 0.55;
+                int[]  base   = new int[1];
+                Size   ts     = Imgproc.getTextSize(label, fontFace, fontSc, 2, base);
+                double lx = x1;
+                double ly = Math.max(y1 - 6, ts.height + 4);
+                Imgproc.rectangle(frame,
+                    new Point(lx, ly - ts.height - 4),
+                    new Point(lx + ts.width + 4, ly + 2),
+                    BLACK, -1);
+                Imgproc.putText(frame, label,
+                    new Point(lx + 2, ly - 2),
+                    fontFace, fontSc, colour, 2);
+
+                // Log (throttled so we don't flood the side panel)
+                throttledLog(type, v);
+                vCount++;
             }
         }
-        if (motionLogCooldown > 0) motionLogCooldown--;
 
-        diff.release();
-        previousFrame.release();
-        previousFrame = grey;
+        // Status bar at bottom
+        String status = violations.size() > 0
+            ? (vCount == 0 ? "All workers safe" : vCount + " violation(s) detected")
+            : "No persons in frame";
+        drawStatusBar(frame, "AI Active  |  " + status, vCount > 0 ? RED : GREEN);
     }
 
-    // ── HOG pedestrian detection ──────────────────────────────────
-
-    /**
-     * Run the HOG people detector on a (possibly downscaled) copy of the frame.
-     * Working on a smaller image speeds up detection with acceptable accuracy.
-     */
-    private List<Rect> detectPeople(Mat frame) {
-        // Downscale to speed up HOG
-        double scale  = Math.min(1.0, 640.0 / Math.max(frame.width(), frame.height()));
-        Mat    resized = new Mat();
-        if (scale < 1.0) {
-            Imgproc.resize(frame, resized, new Size(frame.width() * scale, frame.height() * scale));
-        } else {
-            resized = frame;
+    private String buildLabel(JsonObject v, String type) {
+        switch (type) {
+            case "MISSING_PPE": {
+                JsonArray d = v.getAsJsonArray("details");
+                StringBuilder sb = new StringBuilder("! Missing: ");
+                for (JsonElement e : d) sb.append(e.getAsString()).append(", ");
+                if (sb.length() > 2) sb.setLength(sb.length() - 2);
+                return sb.toString();
+            }
+            case "FALL_DETECTED": return "\u26a0 FALL DETECTED";
+            default:              return type;
         }
-
-        MatOfRect locations = new MatOfRect();
-        MatOfDouble weights  = new MatOfDouble();
-
-        try {
-            hog.detectMultiScale(
-                resized, locations, weights,
-                HIT_THRESHOLD, WIN_STRIDE, PADDING,
-                SCALE, FINAL_THRESHOLD, false);
-        } catch (Exception e) {
-            System.err.println("[DetectionEngine] HOG error: " + e.getMessage());
-        }
-
-        // Scale rectangles back to original frame coordinates
-        List<Rect> result = new ArrayList<>();
-        for (Rect r : locations.toArray()) {
-            result.add(new Rect(
-                (int) (r.x / scale),
-                (int) (r.y / scale),
-                (int) (r.width  / scale),
-                (int) (r.height / scale)));
-        }
-
-        if (scale < 1.0) resized.release();
-        locations.release();
-        weights.release();
-        return result;
     }
 
-    // ── Helpers ───────────────────────────────────────────────────
+    private void throttledLog(String type, JsonObject v) {
+        long now = System.currentTimeMillis();
+        long last = lastLogTime.getOrDefault(type, 0L);
+        if (now - last < ALERT_LOG_INTERVAL_MS) return;
+        lastLogTime.put(type, now);
 
-    private final ModeManager mm = ModeManager.getInstance();
-
-    private void drawModeLabel(Mat frame, String text, Scalar color, int lineIndex) {
-        int y = frame.height() - 16 - lineIndex * 22;
-        Imgproc.rectangle(frame,
-            new Point(0, y - 16),
-            new Point(text.length() * 9 + 10, y + 4),
-            new Scalar(0, 0, 0), -1);
-        Imgproc.putText(frame, text, new Point(5, y),
-            Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, color, 1);
+        String details = v.has("details") ? v.getAsJsonArray("details").toString() : "";
+        DetectionLogger.getInstance().log("AI_ALERT", type, details);
     }
 
-    private void drawStubOverlay(Mat frame, String msg, Scalar color) {
-        Point centre = new Point((double) frame.width() / 2, (double) frame.height() / 2);
-        Imgproc.putText(frame, msg,
-            new Point(centre.x - msg.length() * 4, centre.y),
-            Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, color, 1);
+    private void drawStatusBar(Mat frame, String text, Scalar colour) {
+        int y = frame.rows() - 8;
+        Imgproc.rectangle(frame, new Point(0, y - 20), new Point(frame.cols(), y + 4), BLACK, -1);
+        Imgproc.putText(frame, text, new Point(8, y),
+            Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, colour, 1);
     }
 
+    // ── Multipart builder ─────────────────────────────────────────────────────
 
+    private byte[] buildMultipart(byte[] file, String name, String boundary, String mode) {
+        // Part 1: image file
+        String header1 = "--" + boundary + "\r\n" +
+                         "Content-Disposition: form-data; name=\"file\"; filename=\"" + name + "\"\r\n" +
+                         "Content-Type: image/jpeg\r\n\r\n";
+        // Part 2: mode text field
+        String header2 = "\r\n--" + boundary + "\r\n" +
+                         "Content-Disposition: form-data; name=\"mode\"\r\n\r\n";
+        String footer  = "\r\n--" + boundary + "--\r\n";
+
+        byte[] h1 = header1.getBytes(StandardCharsets.UTF_8);
+        byte[] h2 = header2.getBytes(StandardCharsets.UTF_8);
+        byte[] mb = mode.getBytes(StandardCharsets.UTF_8);
+        byte[] fb = footer.getBytes(StandardCharsets.UTF_8);
+
+        byte[] body = new byte[h1.length + file.length + h2.length + mb.length + fb.length];
+        int pos = 0;
+        System.arraycopy(h1,   0, body, pos, h1.length);   pos += h1.length;
+        System.arraycopy(file, 0, body, pos, file.length);  pos += file.length;
+        System.arraycopy(h2,   0, body, pos, h2.length);   pos += h2.length;
+        System.arraycopy(mb,   0, body, pos, mb.length);   pos += mb.length;
+        System.arraycopy(fb,   0, body, pos, fb.length);
+        return body;
+    }
 }
