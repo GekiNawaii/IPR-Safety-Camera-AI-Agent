@@ -16,10 +16,11 @@ public class Main {
         // Load OpenCV native library (bundled inside openpnp JAR)
         try {
             OpenCV.loadLocally();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             JOptionPane.showMessageDialog(null,
                 "Failed to load OpenCV native library:\n" + e.getMessage(),
                 "Startup Error", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
             System.exit(1);
         }
 
@@ -58,7 +59,8 @@ public class Main {
                 Runtime.getRuntime().halt(0);
             }
 
-            // Step 3: Launch main surveillance window
+            // Step 3: Start backend server & launch main surveillance window
+            ServerManager.start();
             new MainFrame(source).setVisible(true);
         });
     }

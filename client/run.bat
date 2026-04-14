@@ -1,5 +1,6 @@
 @echo off
 setlocal
+cd /d "%~dp0"
 
 echo ============================================
 echo   IPR Safety Camera - Build and Run
@@ -9,8 +10,11 @@ echo.
 REM ── Check if setup has been run ──────────────────────────────────
 set LOCAL_MVN=%~dp0tools\maven\bin\mvn.cmd
 if not exist "%LOCAL_MVN%" (
-    echo [ERROR] Project not set up.
-    echo Please run setup.bat first to download the required tools.
+    echo [INFO] Project not set up. Automatically running setup...
+    call "%~dp0setup.bat"
+)
+if not exist "%LOCAL_MVN%" (
+    echo [ERROR] Setup failed or Maven still missing.
     pause
     exit /b 1
 )
