@@ -39,19 +39,19 @@ public class GuideDialog extends JDialog {
           <li>Read this guide fully, then press <strong>Close</strong> to proceed.</li>
           <li>Select the camera you wish to use from the drop-down list.</li>
           <li>The main surveillance window will open with
-              <strong>Restricted Area Detection</strong> active by default.</li>
+              <strong>Safety Gear Recognition</strong> active by default.</li>
         </ol>
 
         <h2 style='color:#53C0F0;'>Detection Modes</h2>
 
-        <h3 style='color:#4CAF50;'>&#x1F7E2; Restricted Area Detection  <em>(Exclusive)</em></h3>
+        <h3 style='color:#4CAF50;'>&#x1F7E2; Restricted Area Detection</h3>
         <p>Detects any human presence within the camera's field of view and
-        draws a <strong style='color:#4CAF50;'>green bounding box</strong> around each person.
-        Every detection is timestamped and saved to <code>detections.log</code>.</p>
+        draws a <strong style='color:#4CAF50;'>bounding box</strong> around each person.
+        Every detection triggers an alarm, captures a timestamped snapshot with
+        identity borders, and is saved to <code>detections.log</code>.</p>
         <ul>
-          <li>This mode <strong>cannot run together</strong> with the other two modes.</li>
-          <li>Enabling it will automatically disable Safety Gear and Falling Detection.</li>
-          <li>Enabling any other mode will disable Restricted Area Detection.</li>
+          <li>Only one mode can be active at a time — select the desired mode
+              from the <strong>Mode ▾</strong> dropdown on each camera panel.</li>
         </ul>
 
         <h3 style='color:#FF9800;'>&#x1F7E0; Safety Gear Recognition</h3>
@@ -59,13 +59,11 @@ public class GuideDialog extends JDialog {
         required personal protective equipment (PPE) such as hard hats and
         high-visibility vests.  Any worker missing required gear is flagged and
         logged with a snapshot.</p>
-        <p><em>Note: Full implementation coming in a future update.</em></p>
 
         <h3 style='color:#F44336;'>&#x1F534; Falling Detection</h3>
         <p>Monitors body posture and motion patterns to detect sudden falls or
         collapses, automatically raising an on-screen alert and logging the
         incident for review.</p>
-        <p><em>Note: Full implementation coming in a future update.</em></p>
 
         <h2 style='color:#53C0F0;'>Mode Selector</h2>
         <p>Click the <strong>"Modes ▾"</strong> button in the top-right corner of
@@ -97,8 +95,8 @@ public class GuideDialog extends JDialog {
           <li>Detection uses the OpenCV HOG + SVM algorithm (offline, CPU-based).
               Accuracy may be reduced in low-light conditions, heavy occlusion,
               or extreme camera angles.</li>
-          <li>Safety Gear Recognition and Falling Detection are currently
-              stub implementations.</li>
+          <li>Safety Gear Recognition and Falling Detection accuracy depends
+              on model quality and lighting conditions.</li>
         </ul>
 
         <h2 style='color:#53C0F0;'>Privacy &amp; Data</h2>

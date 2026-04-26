@@ -16,7 +16,7 @@ public class ModeSelectorPopup extends JPopupMenu {
     private final JRadioButtonMenuItem offItem;
     private final JRadioButtonMenuItem safetyGearItem;
     private final JRadioButtonMenuItem fallingItem;
-    private final JMenuItem            restrictedItem;
+    private final JRadioButtonMenuItem restrictedItem;
 
     private boolean updating = false;
     private final java.util.function.Consumer<ModeManager.Mode> onSelectCallback;
@@ -58,13 +58,10 @@ public class ModeSelectorPopup extends JPopupMenu {
 
         addSeparator();
 
-        restrictedItem = new JMenuItem("🔴  Restricted Area  (coming soon)");
-        restrictedItem.setFont(new Font("Segoe UI", Font.ITALIC, 12));
-        restrictedItem.setForeground(new Color(0x555566));
-        restrictedItem.setBackground(new Color(0x16213E));
-        restrictedItem.setOpaque(true);
-        restrictedItem.setBorder(new EmptyBorder(6, 14, 6, 14));
-        restrictedItem.setEnabled(false);
+        restrictedItem = buildRadio("\uD83D\uDFE2  Restricted Area Detection", new Color(0x4CAF50),
+                                    "Detects any human presence in the restricted zone.");
+        restrictedItem.addActionListener(e -> handleSelect(ModeManager.Mode.RESTRICTED_AREA));
+        group.add(restrictedItem);
         add(restrictedItem);
 
         syncState(initialMode);
@@ -83,6 +80,7 @@ public class ModeSelectorPopup extends JPopupMenu {
             offItem.setSelected(active == ModeManager.Mode.OFF);
             safetyGearItem.setSelected(active == ModeManager.Mode.SAFETY_GEAR);
             fallingItem.setSelected(active == ModeManager.Mode.FALLING_DETECTION);
+            restrictedItem.setSelected(active == ModeManager.Mode.RESTRICTED_AREA);
         } finally {
             updating = false;
         }
