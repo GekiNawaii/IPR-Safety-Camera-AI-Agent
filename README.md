@@ -22,7 +22,7 @@ Experience the power of the IPR Safety Camera AI Agent instantly. Download the s
 
 ## Developer Documentation
 
-For developers, researchers, and engineers looking to understand, build, or modify the source code, the repository is structured into specific functional modules. The core technologies driving this application include Java (57%) and Python (27%).
+For developers, researchers, and engineers looking to understand, build, or modify the source code, the repository is structured into specific functional modules. The core technologies driving this application include Java and Python.
 
 ### Project Structure
 
