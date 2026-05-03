@@ -70,10 +70,11 @@ public class DetectionEngine {
      * Send {@code frame} to the AI server and draw detection overlays in-place.
      * Called from the camera capture thread.
      */
-    public void process(Mat frame, ModeManager.Mode mode) {
+    public synchronized void process(Mat frame) {
         if (frame.empty()) return;
 
         // Skip AI entirely when mode is OFF
+        ModeManager.Mode mode = ModeManager.getInstance().getActiveMode();
         if (mode == ModeManager.Mode.OFF) {
             drawStatusBar(frame, "AI Detection: OFF", WHITE);
             return;
