@@ -8,12 +8,15 @@ import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.File;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * AI Detection Engine – v2 (Clean Violations API).
@@ -41,12 +44,20 @@ public class DetectionEngine {
     // BGR colours for OpenCV
     private static final Scalar GREEN  = new Scalar( 40, 210,  40);   // safe
     private static final Scalar RED    = new Scalar( 40,  40, 255);   // violation
+    private static final Scalar CYAN   = new Scalar(240, 200,  40);   // restricted area
     private static final Scalar WHITE  = new Scalar(240, 240, 240);   // status bar
     private static final Scalar BLACK  = new Scalar(  0,   0,   0);
 
     // Throttle logging: only log every ONCE per ALERT_LOG_INTERVAL_MS
     private final java.util.Map<String, Long> lastLogTime = new java.util.HashMap<>();
     private static final long ALERT_LOG_INTERVAL_MS = 2000;
+
+    // Restricted area capture directory and throttle
+    private static final String CAPTURE_DIR = "captures";
+    private static final long CAPTURE_INTERVAL_MS = 5000;
+    private long lastCaptureTime = 0;
+    private static final DateTimeFormatter CAPTURE_TS_FMT =
+        DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
 
     public DetectionEngine() {
         this.httpClient = HttpClient.newBuilder()
@@ -89,7 +100,7 @@ public class DetectionEngine {
                 httpClient.send(req, HttpResponse.BodyHandlers.ofString());
 
             if (resp.statusCode() == 200) {
-                drawViolations(frame, resp.body());
+                drawViolations(frame, resp.body(), mode);
             } else {
                 drawStatusBar(frame, "Server error " + resp.statusCode(), RED);
             }
@@ -104,11 +115,12 @@ public class DetectionEngine {
 
     // ──────────────────────────────────────────────────────────────────────────
 
-    private void drawViolations(Mat frame, String json) {
+    private void drawViolations(Mat frame, String json, ModeManager.Mode mode) {
         JsonObject root = gson.fromJson(json, JsonObject.class);
         JsonArray  violations = root.getAsJsonArray("violations");
         if (violations == null) return;
 
+        boolean isRestricted = (mode == ModeManager.Mode.RESTRICTED_AREA);
         int vCount = 0;
 
         for (JsonElement el : violations) {
@@ -116,13 +128,19 @@ public class DetectionEngine {
             String type  = v.get("type").getAsString();
             boolean safe = v.get("safe").getAsBoolean();
 
+            // Restricted Area: ANY person is a breach, override safe→violation
+            if (isRestricted) {
+                type = "RESTRICTED_AREA_BREACH";
+                safe = false;
+            }
+
             JsonArray bboxArr = v.getAsJsonArray("person_bbox");
             double x1 = bboxArr.get(0).getAsDouble();
             double y1 = bboxArr.get(1).getAsDouble();
             double x2 = bboxArr.get(2).getAsDouble();
             double y2 = bboxArr.get(3).getAsDouble();
 
-            Scalar colour = safe ? GREEN : RED;
+            Scalar colour = safe ? GREEN : (isRestricted ? CYAN : RED);
             int    thick  = safe ? 2 : 3;
 
             // Draw bounding box
@@ -152,11 +170,23 @@ public class DetectionEngine {
             }
         }
 
+        // Capture frame snapshot for restricted area breaches (throttled)
+        if (isRestricted && vCount > 0) {
+            captureFrame(frame, vCount);
+        }
+
         // Status bar at bottom
-        String status = violations.size() > 0
-            ? (vCount == 0 ? "All workers safe" : vCount + " violation(s) detected")
-            : "No persons in frame";
-        drawStatusBar(frame, "AI Active  |  " + status, vCount > 0 ? RED : GREEN);
+        if (isRestricted) {
+            String status = violations.size() > 0
+                ? vCount + " intruder(s) detected!"
+                : "Zone clear – no persons";
+            drawStatusBar(frame, "RESTRICTED AREA  |  " + status, vCount > 0 ? RED : GREEN);
+        } else {
+            String status = violations.size() > 0
+                ? (vCount == 0 ? "All workers safe" : vCount + " violation(s) detected")
+                : "No persons in frame";
+            drawStatusBar(frame, "AI Active  |  " + status, vCount > 0 ? RED : GREEN);
+        }
     }
 
     private String buildLabel(JsonObject v, String type) {
@@ -168,8 +198,33 @@ public class DetectionEngine {
                 if (sb.length() > 2) sb.setLength(sb.length() - 2);
                 return sb.toString();
             }
-            case "FALL_DETECTED": return "\u26a0 FALL DETECTED";
-            default:              return type;
+            case "FALL_DETECTED":          return "\u26a0 FALL DETECTED";
+            case "RESTRICTED_AREA_BREACH": return "INTRUDER - RESTRICTED AREA";
+            default:                        return type;
+        }
+    }
+
+    /**
+     * Save a timestamped capture of the current frame (with overlays already drawn)
+     * to the captures/ directory.  Throttled to one capture per CAPTURE_INTERVAL_MS.
+     */
+    private void captureFrame(Mat frame, int intruderCount) {
+        long now = System.currentTimeMillis();
+        if (now - lastCaptureTime < CAPTURE_INTERVAL_MS) return;
+        lastCaptureTime = now;
+
+        try {
+            File dir = new File(CAPTURE_DIR);
+            if (!dir.exists()) dir.mkdirs();
+
+            String ts   = LocalDateTime.now().format(CAPTURE_TS_FMT);
+            String name = String.format("breach_%s_%dpersons.jpg", ts, intruderCount);
+            File   out  = new File(dir, name);
+
+            Imgcodecs.imwrite(out.getAbsolutePath(), frame);
+            System.out.println("[RestrictedArea] Captured: " + out.getAbsolutePath());
+        } catch (Exception e) {
+            System.err.println("[RestrictedArea] Capture failed: " + e.getMessage());
         }
     }
 
