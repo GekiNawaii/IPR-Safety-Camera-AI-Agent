@@ -1,9 +1,13 @@
 package com.safetyCamera;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Manages the Python backend server lifecycle.
@@ -17,6 +21,9 @@ import java.nio.file.Paths;
 public class ServerManager {
     private static Process serverProcess;
     private static volatile boolean running = true;
+
+    /** Port used by the AI backend server. */
+    static final int SERVER_PORT = 8000;
 
     /**
      * Resolve the server directory.
@@ -49,6 +56,7 @@ public class ServerManager {
     }
 
     public static void start() {
+        running = true;
         Thread watchdog = new Thread(() -> {
             File serverDir = resolveServerDir();
             File serverBat = new File(serverDir, "start_server.bat");
@@ -103,6 +111,137 @@ public class ServerManager {
             serverProcess.descendants().forEach(ProcessHandle::destroyForcibly);
             serverProcess.destroyForcibly();
             serverProcess = null;
+        }
+    }
+
+    // ── Manual restart support ─────────────────────────────────────
+
+    /**
+     * Find PIDs of processes listening on the server port (8000).
+     * Uses {@code netstat} which is available to regular users.
+     *
+     * @return list of PIDs bound to port 8000, possibly empty
+     */
+    public static List<Long> findExistingServerPids() {
+        List<Long> pids = new ArrayList<>();
+        try {
+            ProcessBuilder pb = new ProcessBuilder(
+                "cmd.exe", "/c", "netstat -ano | findstr :" + SERVER_PORT
+            );
+            pb.redirectErrorStream(true);
+            Process proc = pb.start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    line = line.trim();
+                    // Match LISTENING state lines for the exact port
+                    if (line.contains("LISTENING") && line.contains(":" + SERVER_PORT)) {
+                        // netstat output: proto  local_addr  foreign_addr  state  PID
+                        String[] parts = line.split("\\s+");
+                        if (parts.length >= 5) {
+                            try {
+                                long pid = Long.parseLong(parts[parts.length - 1]);
+                                if (pid > 0 && !pids.contains(pid)) {
+                                    pids.add(pid);
+                                }
+                            } catch (NumberFormatException ignored) {}
+                        }
+                    }
+                }
+            }
+            proc.waitFor();
+        } catch (Exception e) {
+            System.err.println("[ServerManager] Error finding existing server PIDs: " + e.getMessage());
+        }
+        return pids;
+    }
+
+    /**
+     * Terminate processes by their PIDs using {@code taskkill}.
+     * Does not require admin privileges for processes owned by the same user.
+     *
+     * @param pids list of PIDs to kill
+     * @return true if all kills were attempted (best-effort)
+     */
+    public static boolean terminateProcesses(List<Long> pids) {
+        boolean allOk = true;
+        for (long pid : pids) {
+            try {
+                System.out.println("[ServerManager] Terminating process PID " + pid);
+                // Use taskkill /F /T to force-kill the process tree
+                ProcessBuilder pb = new ProcessBuilder(
+                    "taskkill", "/F", "/T", "/PID", String.valueOf(pid)
+                );
+                pb.redirectErrorStream(true);
+                Process proc = pb.start();
+                // Drain output
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                    String l;
+                    while ((l = r.readLine()) != null) {
+                        System.out.println("[ServerManager] taskkill: " + l);
+                    }
+                }
+                proc.waitFor();
+            } catch (Exception e) {
+                System.err.println("[ServerManager] Failed to kill PID " + pid + ": " + e.getMessage());
+                allOk = false;
+            }
+        }
+
+        // Also stop our own managed process if running
+        if (serverProcess != null) {
+            serverProcess.descendants().forEach(ProcessHandle::destroyForcibly);
+            serverProcess.destroyForcibly();
+            serverProcess = null;
+        }
+        running = false;
+        return allOk;
+    }
+
+    /**
+     * Check if our managed server process is currently alive.
+     */
+    public static boolean isManagedServerRunning() {
+        return serverProcess != null && serverProcess.isAlive();
+    }
+
+    // ── Console visibility (Windows) ──────────────────────────────
+
+    /**
+     * Hide the console window of the current Java process.
+     * Uses PowerShell to find and hide the console window by PID.
+     * Does NOT require administrator privileges.
+     */
+    public static void hideConsoleWindow() {
+        try {
+            long pid = ProcessHandle.current().pid();
+            // PowerShell script that finds the console window by title match and hides it
+            String psScript = String.format(
+                "Add-Type @\"\n" +
+                "using System;\n" +
+                "using System.Runtime.InteropServices;\n" +
+                "public class Win32 {\n" +
+                "    [DllImport(\"kernel32.dll\")]\n" +
+                "    public static extern IntPtr GetConsoleWindow();\n" +
+                "    [DllImport(\"user32.dll\")]\n" +
+                "    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);\n" +
+                "}\n" +
+                "\"@\n" +
+                "$hwnd = [Win32]::GetConsoleWindow()\n" +
+                "if ($hwnd -ne [IntPtr]::Zero) {\n" +
+                "    [Win32]::ShowWindow($hwnd, 0)\n" +
+                "}\n"
+            );
+
+            ProcessBuilder pb = new ProcessBuilder(
+                "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript
+            );
+            pb.redirectErrorStream(true);
+            Process proc = pb.start();
+            // Don't wait – fire and forget
+            proc.waitFor();
+        } catch (Exception e) {
+            System.err.println("[ServerManager] Could not hide console window: " + e.getMessage());
         }
     }
 }

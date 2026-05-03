@@ -9,6 +9,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.beans.PropertyChangeEvent;
+import java.util.List;
 import java.util.concurrent.*;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -41,6 +42,7 @@ public class MainFrame extends JFrame {
     private final JLabel         detectionCountLabel;
     private final JLabel         fpsLabel;
     private final ModeSelectorPopup modePopup;
+    private JButton              serverBtn;
 
     // ── Log UI ────────────────────────────────────────────────────
     private final JTextArea      logArea;
@@ -176,6 +178,9 @@ public class MainFrame extends JFrame {
             }
             startCaptureLoop();
         }
+
+        // Hide the console window now that the GUI is up
+        ServerManager.hideConsoleWindow();
     }
 
 
@@ -300,7 +305,30 @@ public class MainFrame extends JFrame {
         });
         backBtn.addActionListener(e -> goBack());
 
+        // AI Server manual control button
+        serverBtn = new JButton("🖥 AI Server");
+        serverBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        serverBtn.setBackground(new Color(0x1B5E20));
+        serverBtn.setForeground(new Color(0xA5D6A7));
+        serverBtn.setFocusPainted(false);
+        serverBtn.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(0x2E7D32), 1),
+            new EmptyBorder(6, 14, 6, 14)));
+        serverBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        serverBtn.setToolTipText("Manually start/restart the AI backend server");
+        serverBtn.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) {
+                if (serverBtn.isEnabled()) serverBtn.setBackground(new Color(0x2E7D32));
+            }
+            @Override public void mouseExited(MouseEvent e) {
+                if (serverBtn.isEnabled()) serverBtn.setBackground(new Color(0x1B5E20));
+            }
+        });
+        serverBtn.addActionListener(e -> handleServerRestart());
+
         right.add(backBtn);
+        right.add(Box.createHorizontalStrut(6));
+        right.add(serverBtn);
         right.add(Box.createHorizontalStrut(6));
         right.add(toggleLogBtn);
         right.add(Box.createHorizontalStrut(6));
@@ -325,6 +353,91 @@ public class MainFrame extends JFrame {
     }
 
 
+
+    // ── AI Server restart logic ────────────────────────────────────
+
+    /**
+     * Handle the AI Server button press.
+     * Runs the entire check → terminate → relaunch flow on a background thread
+     * so the EDT stays responsive. Button text and state update at each step.
+     */
+    private void handleServerRestart() {
+        serverBtn.setEnabled(false);
+        serverBtn.setBackground(new Color(0x424242));
+        serverBtn.setForeground(new Color(0x9E9E9E));
+        serverBtn.setText("⏳ Checking…");
+
+        new Thread(() -> {
+            try {
+                // Step 1: Check for existing server instances on port 8000
+                List<Long> pids = ServerManager.findExistingServerPids();
+                boolean hadExisting = !pids.isEmpty() || ServerManager.isManagedServerRunning();
+
+                if (hadExisting) {
+                    // Step 2a: Terminate existing instances
+                    SwingUtilities.invokeLater(() -> serverBtn.setText("🔴 Terminating…"));
+                    ServerManager.terminateProcesses(pids);
+                    // Give the OS a moment to release the port
+                    Thread.sleep(1500);
+
+                    // Step 2b: Relaunch
+                    SwingUtilities.invokeLater(() -> serverBtn.setText("🔄 Relaunching…"));
+                } else {
+                    // No existing instance – just launch
+                    SwingUtilities.invokeLater(() -> serverBtn.setText("🚀 Launching…"));
+                }
+
+                // Step 3: Start the server
+                ServerManager.start();
+
+                // Wait a bit for the server to bind the port
+                Thread.sleep(3000);
+
+                // Step 4: Verify
+                List<Long> newPids = ServerManager.findExistingServerPids();
+                boolean success = !newPids.isEmpty() || ServerManager.isManagedServerRunning();
+
+                SwingUtilities.invokeLater(() -> {
+                    if (success) {
+                        serverBtn.setText("✅ Server Running");
+                        serverBtn.setBackground(new Color(0x1B5E20));
+                        serverBtn.setForeground(new Color(0xA5D6A7));
+                    } else {
+                        serverBtn.setText("⚠ Launch Failed");
+                        serverBtn.setBackground(new Color(0xBF360C));
+                        serverBtn.setForeground(new Color(0xFFCCBC));
+                    }
+                    serverBtn.setEnabled(true);
+
+                    // Reset button text after 4 seconds
+                    Timer resetTimer = new Timer(4000, ev -> {
+                        serverBtn.setText("🖥 AI Server");
+                        serverBtn.setBackground(new Color(0x1B5E20));
+                        serverBtn.setForeground(new Color(0xA5D6A7));
+                    });
+                    resetTimer.setRepeats(false);
+                    resetTimer.start();
+                });
+
+            } catch (Exception ex) {
+                System.err.println("[MainFrame] Server restart error: " + ex.getMessage());
+                SwingUtilities.invokeLater(() -> {
+                    serverBtn.setText("⚠ Error");
+                    serverBtn.setBackground(new Color(0xBF360C));
+                    serverBtn.setForeground(new Color(0xFFCCBC));
+                    serverBtn.setEnabled(true);
+
+                    Timer resetTimer = new Timer(4000, ev -> {
+                        serverBtn.setText("🖥 AI Server");
+                        serverBtn.setBackground(new Color(0x1B5E20));
+                        serverBtn.setForeground(new Color(0xA5D6A7));
+                    });
+                    resetTimer.setRepeats(false);
+                    resetTimer.start();
+                });
+            }
+        }, "ServerRestartThread").start();
+    }
 
     // ── Camera capture loop ───────────────────────────────────────
 
