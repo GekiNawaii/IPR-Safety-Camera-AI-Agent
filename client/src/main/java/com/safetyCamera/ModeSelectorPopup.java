@@ -101,7 +101,6 @@ public class ModeSelectorPopup extends JPopupMenu implements PropertyChangeListe
             offItem.setSelected(active == ModeManager.Mode.OFF);
             safetyGearItem.setSelected(active == ModeManager.Mode.SAFETY_GEAR);
             fallingItem.setSelected(active == ModeManager.Mode.FALLING_DETECTION);
-            restrictedItem.setSelected(active == ModeManager.Mode.RESTRICTED_AREA);
         } finally {
             updating = false;
         }
