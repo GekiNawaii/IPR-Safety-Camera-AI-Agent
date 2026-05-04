@@ -24,7 +24,7 @@ public class MainFrame extends JFrame {
 
     // ── Constructor ───────────────────────────────────────────────
 
-    public MainFrame(String initialCameraSource) {
+    public MainFrame(String initialCameraName, String initialCameraSource) {
         super("IPR Safety Camera – Multi-Camera Monitor");
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setMinimumSize(new Dimension(880, 600));
@@ -78,16 +78,16 @@ public class MainFrame extends JFrame {
         logScrollPane.setVisible(false);
         root.add(logScrollPane, BorderLayout.EAST);
         
-        DetectionLogger.getInstance().addListener((timestamp, mode, eventType, details) -> {
+        DetectionLogger.getInstance().addListener((timestamp, camera, mode, eventType, details) -> {
             SwingUtilities.invokeLater(() -> {
-                logArea.append(String.format("[%s] %s\n  Mode: %s\n  %s\n\n", timestamp, eventType, mode, details));
+                logArea.append(String.format("[%s] %s\n  Camera: %s | Mode: %s\n  %s\n\n", timestamp, eventType, camera, mode, details));
                 logArea.setCaretPosition(logArea.getDocument().getLength());
             });
         });
 
         // ── Start initial camera ──────────────────────────────────
-        if (initialCameraSource != null) {
-            addCameraNode(initialCameraSource);
+        if (initialCameraSource != null && initialCameraName != null) {
+            addCameraNode(initialCameraName, initialCameraSource);
         }
 
         // Hide the console window now that the GUI is up
@@ -134,7 +134,7 @@ public class MainFrame extends JFrame {
         right.setOpaque(false);
 
         // Add Camera Button
-        JButton addCamBtn = new JButton("\u2795 Add Camera");
+        JButton addCamBtn = new JButton("Add Camera");
         addCamBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         addCamBtn.setBackground(new Color(0x0F3460));
         addCamBtn.setForeground(new Color(0x53C0F0));
@@ -153,13 +153,14 @@ public class MainFrame extends JFrame {
             CameraSelectDialog dialog = new CameraSelectDialog(this);
             dialog.setVisible(true);
             String source = dialog.getCameraSource();
-            if (source != null) {
-                addCameraNode(source);
+            String name = dialog.getCameraName();
+            if (source != null && name != null) {
+                addCameraNode(name, source);
             }
         });
 
         // Logs toggle button
-        JButton toggleLogBtn = new JButton("\uD83D\uDCDC Logs");
+        JButton toggleLogBtn = new JButton("Logs");
         toggleLogBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         toggleLogBtn.setBackground(new Color(0x2C2C4A));
         toggleLogBtn.setForeground(new Color(0xAAAAAA));
@@ -180,7 +181,7 @@ public class MainFrame extends JFrame {
         right.add(Box.createHorizontalStrut(6));
 
         // AI Server manual control button
-        serverBtn = new JButton("🖥 AI Server");
+        serverBtn = new JButton("AI Server");
         serverBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         serverBtn.setBackground(new Color(0x1B5E20));
         serverBtn.setForeground(new Color(0xA5D6A7));
@@ -209,9 +210,9 @@ public class MainFrame extends JFrame {
         return bar;
     }
 
-    private void addCameraNode(String source) {
+    private void addCameraNode(String name, String source) {
         CameraNodePanel[] panelRef = new CameraNodePanel[1];
-        panelRef[0] = new CameraNodePanel(source, () -> {
+        panelRef[0] = new CameraNodePanel(name, source, () -> {
             gridPanel.remove(panelRef[0]);
             updateGridLayout();
         });
@@ -247,7 +248,7 @@ public class MainFrame extends JFrame {
         serverBtn.setEnabled(false);
         serverBtn.setBackground(new Color(0x424242));
         serverBtn.setForeground(new Color(0x9E9E9E));
-        serverBtn.setText("⏳ Checking…");
+        serverBtn.setText("Checking…");
 
         new Thread(() -> {
             try {
@@ -257,16 +258,16 @@ public class MainFrame extends JFrame {
 
                 if (hadExisting) {
                     // Step 2a: Terminate existing instances
-                    SwingUtilities.invokeLater(() -> serverBtn.setText("🔴 Terminating…"));
+                    SwingUtilities.invokeLater(() -> serverBtn.setText("Terminating…"));
                     ServerManager.terminateProcesses(pids);
                     // Give the OS a moment to release the port
                     Thread.sleep(1500);
 
                     // Step 2b: Relaunch
-                    SwingUtilities.invokeLater(() -> serverBtn.setText("🔄 Relaunching…"));
+                    SwingUtilities.invokeLater(() -> serverBtn.setText("Relaunching…"));
                 } else {
                     // No existing instance – just launch
-                    SwingUtilities.invokeLater(() -> serverBtn.setText("🚀 Launching…"));
+                    SwingUtilities.invokeLater(() -> serverBtn.setText("Launching…"));
                 }
 
                 // Step 3: Start the server
@@ -281,11 +282,11 @@ public class MainFrame extends JFrame {
 
                 SwingUtilities.invokeLater(() -> {
                     if (success) {
-                        serverBtn.setText("✅ Server Running");
+                        serverBtn.setText("Server Running");
                         serverBtn.setBackground(new Color(0x1B5E20));
                         serverBtn.setForeground(new Color(0xA5D6A7));
                     } else {
-                        serverBtn.setText("⚠ Launch Failed");
+                        serverBtn.setText("Launch Failed");
                         serverBtn.setBackground(new Color(0xBF360C));
                         serverBtn.setForeground(new Color(0xFFCCBC));
                     }
@@ -293,7 +294,7 @@ public class MainFrame extends JFrame {
 
                     // Reset button text after 4 seconds
                     Timer resetTimer = new Timer(4000, ev -> {
-                        serverBtn.setText("🖥 AI Server");
+                        serverBtn.setText("AI Server");
                         serverBtn.setBackground(new Color(0x1B5E20));
                         serverBtn.setForeground(new Color(0xA5D6A7));
                     });
@@ -304,13 +305,13 @@ public class MainFrame extends JFrame {
             } catch (Exception ex) {
                 System.err.println("[MainFrame] Server restart error: " + ex.getMessage());
                 SwingUtilities.invokeLater(() -> {
-                    serverBtn.setText("⚠ Error");
+                    serverBtn.setText("Error");
                     serverBtn.setBackground(new Color(0xBF360C));
                     serverBtn.setForeground(new Color(0xFFCCBC));
                     serverBtn.setEnabled(true);
 
                     Timer resetTimer = new Timer(4000, ev -> {
-                        serverBtn.setText("🖥 AI Server");
+                        serverBtn.setText("AI Server");
                         serverBtn.setBackground(new Color(0x1B5E20));
                         serverBtn.setForeground(new Color(0xA5D6A7));
                     });

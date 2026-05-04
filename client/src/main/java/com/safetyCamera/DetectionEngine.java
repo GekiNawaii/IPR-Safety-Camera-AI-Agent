@@ -59,7 +59,10 @@ public class DetectionEngine {
     private static final DateTimeFormatter CAPTURE_TS_FMT =
         DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
 
-    public DetectionEngine() {
+    private final String cameraName;
+
+    public DetectionEngine(String cameraName) {
+        this.cameraName = cameraName;
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();
@@ -234,7 +237,7 @@ public class DetectionEngine {
         lastLogTime.put(type, now);
 
         String details = v.has("details") ? v.getAsJsonArray("details").toString() : "";
-        DetectionLogger.getInstance().log("AI_ALERT", type, details);
+        DetectionLogger.getInstance().log(cameraName, "AI_ALERT", type, details);
     }
 
     private void drawStatusBar(Mat frame, String text, Scalar colour) {

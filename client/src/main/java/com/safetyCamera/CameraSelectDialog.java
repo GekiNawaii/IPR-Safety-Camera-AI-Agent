@@ -18,6 +18,7 @@ import java.util.List;
 public class CameraSelectDialog extends JDialog {
 
     private String selectedSource = null;
+    private String selectedName = null;
 
     private static final String MODE_LOCAL = "Camera thiết bị";
     private static final String MODE_IP    = "IP Camera (điện thoại)";
@@ -38,7 +39,7 @@ public class CameraSelectDialog extends JDialog {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(new Color(0x0F3460));
         header.setBorder(new EmptyBorder(12, 20, 12, 20));
-        JLabel title = new JLabel("🎥  Nguồn Camera / Video");
+        JLabel title = new JLabel("Nguồn Camera / Video");
         title.setFont(new Font("Segoe UI", Font.BOLD, 16));
         title.setForeground(new Color(0x53C0F0));
         header.add(title, BorderLayout.WEST);
@@ -169,12 +170,29 @@ public class CameraSelectDialog extends JDialog {
         modeCombo.addActionListener(e -> cards.show(cardPanel, (String) modeCombo.getSelectedItem()));
 
         // ── Footer ────────────────────────────────────────────────
+        JPanel namePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 10));
+        namePanel.setBackground(new Color(0x1A1A2E));
+        JLabel nameLabel = lbl("Tên hiển thị:");
+        JTextField nameField = new JTextField(15);
+        nameField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        nameField.setBackground(new Color(0x0F3460));
+        nameField.setForeground(Color.WHITE);
+        nameField.setCaretColor(Color.WHITE);
+        namePanel.add(nameLabel);
+        namePanel.add(nameField);
+
         JButton connectBtn = new JButton("  Kết nối & Bắt đầu  ");
         JButton cancelBtn  = new JButton("Huỷ");
         styleBtn(connectBtn, new Color(0x4CAF50), Color.WHITE);
         styleBtn(cancelBtn,  new Color(0x333355), new Color(0xAAAAAA));
 
         connectBtn.addActionListener(e -> {
+            String name = nameField.getText().trim();
+            if (name.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                    "Vui lòng nhập tên hiển thị cho Camera!", "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             String mode = (String) modeCombo.getSelectedItem();
             if (MODE_LOCAL.equals(mode)) {
                 String sel = (String) cameraCombo.getSelectedItem();
@@ -190,15 +208,22 @@ public class CameraSelectDialog extends JDialog {
                 }
                 selectedSource = path;
             }
+            selectedName = name;
             dispose();
         });
-        cancelBtn.addActionListener(e -> { selectedSource = null; dispose(); });
+        cancelBtn.addActionListener(e -> { selectedSource = null; selectedName = null; dispose(); });
 
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 12));
         footer.setBackground(new Color(0x1A1A2E));
         footer.add(cancelBtn);
         footer.add(connectBtn);
-        root.add(footer, BorderLayout.SOUTH);
+        
+        JPanel bottomArea = new JPanel(new BorderLayout());
+        bottomArea.setBackground(new Color(0x1A1A2E));
+        bottomArea.add(namePanel, BorderLayout.NORTH);
+        bottomArea.add(footer, BorderLayout.SOUTH);
+        
+        root.add(bottomArea, BorderLayout.SOUTH);
 
         // Probe local cameras in background
         new SwingWorker<List<Integer>, Void>() {
@@ -242,5 +267,9 @@ public class CameraSelectDialog extends JDialog {
     /** Returns: camera index string ("0"), URL, or absolute video file path. Null if cancelled. */
     public String getCameraSource() {
         return selectedSource;
+    }
+
+    public String getCameraName() {
+        return selectedName;
     }
 }

@@ -68,13 +68,14 @@ public class Main {
             dialog.setVisible(true);
 
             String source = dialog.getCameraSource();
-            if (source == null) {
+            String name = dialog.getCameraName();
+            if (source == null || name == null) {
                 Runtime.getRuntime().halt(0);
             }
 
             // Step 3: Start backend server & launch main surveillance window
             ServerManager.start();
-            new MainFrame(source).setVisible(true);
+            new MainFrame(name, source).setVisible(true);
         });
     }
 }
