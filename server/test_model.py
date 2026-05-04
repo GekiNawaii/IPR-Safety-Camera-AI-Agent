@@ -82,7 +82,7 @@ def draw_results(img: np.ndarray, violations: list) -> np.ndarray:
     return out
 
 
-def run_test(source, num: int = 10):
+def run_test(source, num: int = 10, mode: str = "ALL"):
     # ── Find models ───────────────────────────────────────────────────────────
     ppe_model_path = "models/ppe_best.pt"
     if not os.path.exists(ppe_model_path):
@@ -130,12 +130,12 @@ def run_test(source, num: int = 10):
             continue
 
         data       = perception.detect(img)
-        violations = logic.analyze(data)
+        violations = logic.analyze(data, mode=mode)
         rendered   = draw_results(img, violations)
 
         # Summary for this image
         vios   = [v for v in violations if not v.get("safe", True)]
-        status = ("✅ SAFE" if not vios else
+        status = ("SAFE" if not vios else
                   ("🔴 " + " | ".join(set(v["type"] for v in vios))))
         print(f"  [{idx+1:02d}] {os.path.basename(img_path):40s}  "
               f"persons={len(violations)}  {status}")
@@ -159,5 +159,8 @@ if __name__ == "__main__":
                         help="Path to an image file or folder. Omit for auto random.")
     parser.add_argument("--num", type=int, default=10,
                         help="Number of random images to test when no --source (default: 10)")
+    parser.add_argument("--mode", type=str, default="ALL",
+                        choices=["ALL", "SAFETY_GEAR", "FALLING_DETECTION", "RESTRICTED_AREA"],
+                        help="Detection mode to run")
     args = parser.parse_args()
-    run_test(args.source, args.num)
+    run_test(args.source, args.num, args.mode)

@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class CameraNodePanel extends JPanel {
 
+    private final String cameraName;
     private final String cameraSource;
     private final Runnable onClose;
     private ModeManager.Mode activeMode = ModeManager.Mode.SAFETY_GEAR;
@@ -27,7 +28,7 @@ public class CameraNodePanel extends JPanel {
     private final JLabel statusLabel;
     private final JLabel fpsLabel;
 
-    private final DetectionEngine engine = new DetectionEngine();
+    private final DetectionEngine engine;
     
     // Dedicated processor thread to avoid holding up the SharedCameraService broadcast
     private final ExecutorService processorPool = Executors.newSingleThreadExecutor();
@@ -39,9 +40,11 @@ public class CameraNodePanel extends JPanel {
     private final JButton modesBtn;
     private final SharedCameraService.FrameListener frameListener;
 
-    public CameraNodePanel(String cameraSource, Runnable onClose) {
+    public CameraNodePanel(String cameraName, String cameraSource, Runnable onClose) {
+        this.cameraName = cameraName;
         this.cameraSource = cameraSource;
         this.onClose = onClose;
+        this.engine = new DetectionEngine(cameraName);
 
         setLayout(new BorderLayout());
         setBackground(new Color(0x0D0D1A));
@@ -52,7 +55,7 @@ public class CameraNodePanel extends JPanel {
         topBar.setBackground(new Color(0x16213E));
         topBar.setBorder(new EmptyBorder(4, 8, 4, 8));
 
-        JLabel titleLabel = new JLabel("\uD83C\uDFA5 " + cameraSource);
+        JLabel titleLabel = new JLabel(" " + cameraName);
         titleLabel.setForeground(Color.WHITE);
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
         topBar.add(titleLabel, BorderLayout.WEST);
@@ -160,14 +163,14 @@ public class CameraNodePanel extends JPanel {
         String text;
         Color col;
         switch (activeMode) {
-            case SAFETY_GEAR       -> { text = "\uD83D\uDEE1 Safety Gear";  col = new Color(0xFF9800); }
-            case FALLING_DETECTION -> { text = "\u26A0 Falling Det.";   col = new Color(0xF44336); }
-            case RESTRICTED_AREA   -> { text = "\uD83D\uDFE2 Restricted";   col = new Color(0x4CAF50); }
-            default                -> { text = "\u2B1C OFF";            col = new Color(0x888888); }
+            case SAFETY_GEAR       -> { text = "Safety Gear";  col = new Color(0xFF9800); }
+            case FALLING_DETECTION -> { text = "Falling Det.";   col = new Color(0xF44336); }
+            case RESTRICTED_AREA   -> { text = "DFE2 Restricted";   col = new Color(0x4CAF50); }
+            default                -> { text = "OFF";            col = new Color(0x888888); }
         }
         statusLabel.setForeground(col);
         statusLabel.setText(text);
-        modesBtn.setText(text + " \u25BE");
+        modesBtn.setText(text);
     }
 
     public void shutdown() {

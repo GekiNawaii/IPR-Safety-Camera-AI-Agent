@@ -85,6 +85,16 @@ class SafetyLogicModule:
                         "safe":        False,
                     })
 
+            # ── 2.5 Restricted Area ───────────────────────────────────────────
+            if not is_violated and mode == "RESTRICTED_AREA":
+                is_violated = True
+                violations.append({
+                    "type":        "RESTRICTED_ACCESS",
+                    "person_bbox": pbbox,
+                    "details":     ["Unauthorized person detected in zone"],
+                    "safe":        False,
+                })
+
             # ── 3. Safe marker ────────────────────────────────────────────────
             # Emit a SAFE box if the person clears all the chosen mode checks
             if not is_violated:

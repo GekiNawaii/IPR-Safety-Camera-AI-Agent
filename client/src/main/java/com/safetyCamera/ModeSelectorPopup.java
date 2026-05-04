@@ -29,14 +29,14 @@ public class ModeSelectorPopup extends JPopupMenu {
             BorderFactory.createLineBorder(new Color(0x0F3460), 1),
             new EmptyBorder(4, 0, 4, 0)));
 
-        JLabel header = new JLabel("  🛡  Detection Mode");
+        JLabel header = new JLabel("Detection Mode");
         header.setFont(new Font("Segoe UI", Font.BOLD, 13));
         header.setForeground(new Color(0x53C0F0));
         header.setBorder(new EmptyBorder(6, 12, 6, 12));
         add(header);
         addSeparator();
 
-        offItem = buildRadio("⬜  OFF  (No Detection)", new Color(0x888888),
+        offItem = buildRadio("OFF (No Detection)", new Color(0x888888),
                              "Camera streams but AI model is paused.");
         offItem.addActionListener(e -> handleSelect(ModeManager.Mode.OFF));
         group.add(offItem);
@@ -44,21 +44,19 @@ public class ModeSelectorPopup extends JPopupMenu {
 
         addSeparator();
 
-        safetyGearItem = buildRadio("🛡  Safety Gear Recognition", new Color(0xFF9800),
+        safetyGearItem = buildRadio("Safety Gear Recognition", new Color(0xFF9800),
                                     "Detects missing helmets and safety vests.");
         safetyGearItem.addActionListener(e -> handleSelect(ModeManager.Mode.SAFETY_GEAR));
         group.add(safetyGearItem);
         add(safetyGearItem);
 
-        fallingItem = buildRadio("⚠  Falling Detection", new Color(0xF44336),
+        fallingItem = buildRadio("Falling Detection", new Color(0xF44336),
                                  "Detects when a worker falls or collapses.");
         fallingItem.addActionListener(e -> handleSelect(ModeManager.Mode.FALLING_DETECTION));
         group.add(fallingItem);
         add(fallingItem);
 
-        addSeparator();
-
-        restrictedItem = buildRadio("\uD83D\uDFE2  Restricted Area Detection", new Color(0x4CAF50),
+        restrictedItem = buildRadio("Restricted Area Detection", new Color(0x4CAF50),
                                     "Detects any human presence in the restricted zone.");
         restrictedItem.addActionListener(e -> handleSelect(ModeManager.Mode.RESTRICTED_AREA));
         group.add(restrictedItem);

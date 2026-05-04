@@ -22,7 +22,7 @@ public class MainFrame extends JFrame {
 
     // ── Constructor ───────────────────────────────────────────────
 
-    public MainFrame(String initialCameraSource) {
+    public MainFrame(String initialCameraName, String initialCameraSource) {
         super("IPR Safety Camera – Multi-Camera Monitor");
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setMinimumSize(new Dimension(880, 600));
@@ -76,16 +76,16 @@ public class MainFrame extends JFrame {
         logScrollPane.setVisible(false);
         root.add(logScrollPane, BorderLayout.EAST);
         
-        DetectionLogger.getInstance().addListener((timestamp, mode, eventType, details) -> {
+        DetectionLogger.getInstance().addListener((timestamp, camera, mode, eventType, details) -> {
             SwingUtilities.invokeLater(() -> {
-                logArea.append(String.format("[%s] %s\n  Mode: %s\n  %s\n\n", timestamp, eventType, mode, details));
+                logArea.append(String.format("[%s] %s\n  Camera: %s | Mode: %s\n  %s\n\n", timestamp, eventType, camera, mode, details));
                 logArea.setCaretPosition(logArea.getDocument().getLength());
             });
         });
 
         // ── Start initial camera ──────────────────────────────────
-        if (initialCameraSource != null) {
-            addCameraNode(initialCameraSource);
+        if (initialCameraSource != null && initialCameraName != null) {
+            addCameraNode(initialCameraName, initialCameraSource);
         }
     }
 
@@ -129,7 +129,7 @@ public class MainFrame extends JFrame {
         right.setOpaque(false);
 
         // Add Camera Button
-        JButton addCamBtn = new JButton("\u2795 Add Camera");
+        JButton addCamBtn = new JButton("Add Camera");
         addCamBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         addCamBtn.setBackground(new Color(0x0F3460));
         addCamBtn.setForeground(new Color(0x53C0F0));
@@ -148,13 +148,14 @@ public class MainFrame extends JFrame {
             CameraSelectDialog dialog = new CameraSelectDialog(this);
             dialog.setVisible(true);
             String source = dialog.getCameraSource();
-            if (source != null) {
-                addCameraNode(source);
+            String name = dialog.getCameraName();
+            if (source != null && name != null) {
+                addCameraNode(name, source);
             }
         });
 
         // Logs toggle button
-        JButton toggleLogBtn = new JButton("\uD83D\uDCDC Logs");
+        JButton toggleLogBtn = new JButton("Logs");
         toggleLogBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         toggleLogBtn.setBackground(new Color(0x2C2C4A));
         toggleLogBtn.setForeground(new Color(0xAAAAAA));
@@ -180,9 +181,9 @@ public class MainFrame extends JFrame {
         return bar;
     }
 
-    private void addCameraNode(String source) {
+    private void addCameraNode(String name, String source) {
         CameraNodePanel[] panelRef = new CameraNodePanel[1];
-        panelRef[0] = new CameraNodePanel(source, () -> {
+        panelRef[0] = new CameraNodePanel(name, source, () -> {
             gridPanel.remove(panelRef[0]);
             updateGridLayout();
         });

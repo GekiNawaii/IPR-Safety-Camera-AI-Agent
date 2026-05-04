@@ -109,7 +109,7 @@ class PerceptionModule:
             if label is None or label == "person":
                 continue           # skip unmapped or the person class itself
             conf = float(box.conf[0])
-            if conf < 0.40:
+            if conf < 0.20:
                 continue
             items.append({
                 "type": label,
