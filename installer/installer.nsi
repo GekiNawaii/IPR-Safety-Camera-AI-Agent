@@ -1,7 +1,6 @@
 ; ============================================================================
 ;  IPR Safety Camera – NSIS Installer Script
 ;  Installs Client (Java) + Server (Python) with prerequisite auto-download
-;  No admin privileges required – installs to user's local AppData
 ; ============================================================================
 
 !include "MUI2.nsh"
@@ -12,8 +11,8 @@
 ; ── General settings ───────────────────────────────────────────────────────
 Name "IPR Safety Camera"
 OutFile "..\IPR-Safety-Camera-Setup.exe"
-InstallDir "$LOCALAPPDATA\IPR Safety Camera"
-RequestExecutionLevel user
+InstallDir "$PROGRAMFILES\IPR Safety Camera"
+RequestExecutionLevel admin
 BrandingText "IPR Safety Camera Installer"
 Unicode True
 
@@ -70,11 +69,11 @@ Var PythonFound
 !insertmacro MUI_LANGUAGE "English"
 
 ; ============================================================================
-;  INIT – set defaults (user-writable paths, no admin needed)
+;  INIT – set defaults
 ; ============================================================================
 Function .onInit
-    StrCpy $ClientDir "$LOCALAPPDATA\IPR Safety Camera\Client"
-    StrCpy $ServerDir "$LOCALAPPDATA\IPR Safety Camera\Server"
+    StrCpy $ClientDir "$PROGRAMFILES\IPR Safety Camera\Client"
+    StrCpy $ServerDir "$PROGRAMFILES\IPR Safety Camera\Server"
     StrCpy $JavaFound "0"
     StrCpy $PythonFound "0"
 FunctionEnd
@@ -187,11 +186,6 @@ Section "Client Application" SecClient
     File "..\client\setup.bat"
     File "..\client\run.bat"
 
-    ; Write a config file so the client knows where the server is installed
-    FileOpen $0 "$ClientDir\server.path" w
-    FileWrite $0 "$ServerDir"
-    FileClose $0
-
     DetailPrint "Client files installed."
 SectionEnd
 
@@ -222,38 +216,38 @@ SectionEnd
 ; ============================================================================
 ;  SECTION: Desktop Shortcuts
 ; ============================================================================
-Section "Desktop Shortcut" SecShortcuts
-    DetailPrint "Creating desktop shortcut..."
+Section "Desktop Shortcuts" SecShortcuts
+    DetailPrint "Creating desktop shortcuts..."
 
-    ; Single shortcut – client auto-starts server via ServerManager
+    ; Client shortcut
     SetOutPath "$ClientDir"
     CreateShortcut "$DESKTOP\IPR Safety Camera.lnk" \
         "$ClientDir\run.bat" "" "$ClientDir\run.bat" 0 \
-        SW_SHOWNORMAL "" "Launch IPR Safety Camera (Client + Server)"
+        SW_SHOWNORMAL "" "Launch IPR Safety Camera"
 
     DetailPrint "Desktop shortcut created."
 SectionEnd
 
 ; ============================================================================
-;  SECTION: Uninstaller (uses HKCU – no admin needed)
+;  SECTION: Uninstaller
 ; ============================================================================
 Section "-CreateUninstaller"
     ; Write uninstaller
     WriteUninstaller "$INSTDIR\Uninstall.exe"
 
-    ; Save install paths to registry for uninstaller (HKCU = current user)
-    WriteRegStr HKCU "Software\IPR Safety Camera" "ClientDir" "$ClientDir"
-    WriteRegStr HKCU "Software\IPR Safety Camera" "ServerDir" "$ServerDir"
-    WriteRegStr HKCU "Software\IPR Safety Camera" "InstallDir" "$INSTDIR"
+    ; Save install paths to registry for uninstaller
+    WriteRegStr HKLM "Software\IPR Safety Camera" "ClientDir" "$ClientDir"
+    WriteRegStr HKLM "Software\IPR Safety Camera" "ServerDir" "$ServerDir"
+    WriteRegStr HKLM "Software\IPR Safety Camera" "InstallDir" "$INSTDIR"
 
-    ; Add/Remove Programs entry (HKCU = visible without admin)
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\IPRSafetyCamera" \
+    ; Add/Remove Programs entry
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\IPRSafetyCamera" \
         "DisplayName" "IPR Safety Camera"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\IPRSafetyCamera" \
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\IPRSafetyCamera" \
         "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\IPRSafetyCamera" \
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\IPRSafetyCamera" \
         "Publisher" "IPR Team"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\IPRSafetyCamera" \
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\IPRSafetyCamera" \
         "DisplayVersion" "1.0"
 SectionEnd
 
@@ -264,7 +258,7 @@ SectionEnd
     !insertmacro MUI_DESCRIPTION_TEXT ${SecPrereqs}  "Check and install Java 17 and Python 3.11 if not already present."
     !insertmacro MUI_DESCRIPTION_TEXT ${SecClient}    "Install the Java-based surveillance client with offline human detection."
     !insertmacro MUI_DESCRIPTION_TEXT ${SecServer}    "Install the Python AI server for advanced safety analysis."
-    !insertmacro MUI_DESCRIPTION_TEXT ${SecShortcuts}  "Create a desktop shortcut to launch the application (Client + Server)."
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecShortcuts}  "Create desktop shortcuts to launch Client and Server."
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 ; ============================================================================
@@ -275,12 +269,12 @@ Function LaunchClient
 FunctionEnd
 
 ; ============================================================================
-;  UNINSTALLER (uses HKCU – no admin needed)
+;  UNINSTALLER
 ; ============================================================================
 Section "Uninstall"
     ; Read saved paths from registry
-    ReadRegStr $ClientDir HKCU "Software\IPR Safety Camera" "ClientDir"
-    ReadRegStr $ServerDir HKCU "Software\IPR Safety Camera" "ServerDir"
+    ReadRegStr $ClientDir HKLM "Software\IPR Safety Camera" "ClientDir"
+    ReadRegStr $ServerDir HKLM "Software\IPR Safety Camera" "ServerDir"
 
     ; Remove client files
     ${If} $ClientDir != ""
@@ -300,8 +294,8 @@ Section "Uninstall"
     RMDir "$INSTDIR"
 
     ; Clean up registry
-    DeleteRegKey HKCU "Software\IPR Safety Camera"
-    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\IPRSafetyCamera"
+    DeleteRegKey HKLM "Software\IPR Safety Camera"
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\IPRSafetyCamera"
 
     DetailPrint "Uninstallation complete."
 SectionEnd
