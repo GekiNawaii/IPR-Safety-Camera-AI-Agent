@@ -11,7 +11,7 @@ Our application is built for seamless deployment, ensuring that organizations ca
 Experience the power of the IPR Safety Camera AI Agent instantly. Download the standalone installer for a streamlined, one-click setup process.
 
 <p align="center">
-  <a href="https://github.com/GekiNawaii/IPR-Safety-Camera-AI-Agent/raw/main/IPR-Safety-Camera-Setup.exe">
+  <a href="https://github.com/GekiNawaii/IPR-Safety-Camera-AI-Agent/raw/camera-panel/IPR-Safety-Camera-Setup.exe">
     <img src="https://img.shields.io/badge/Download_Installer-IPR__Safety__Camera__Setup.exe-blue?style=for-the-badge&logo=windows" alt="Download Installer" />
   </a>
 </p>
