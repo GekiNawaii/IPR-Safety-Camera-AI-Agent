@@ -11,7 +11,7 @@ import java.beans.PropertyChangeSupport;
  *   FALLING_DETECTION→ run yolov8n-pose.pt keypoint analysis
  *   OFF              → no AI inference (camera still streams)
  *
- * RESTRICTED_AREA  → person-presence detection (any human = breach)
+ * RESTRICTED_AREA is kept in the enum for backward-compat but is not selectable.
  *
  * Fires PropertyChangeEvent("activeMode", oldMode, newMode) on every change.
  */
@@ -22,7 +22,7 @@ public class ModeManager {
         OFF              ("OFF (No Detection)",      0x666688),
         SAFETY_GEAR      ("Safety Gear Recognition", 0xFF9800),
         FALLING_DETECTION("Falling Detection",       0xF44336),
-        RESTRICTED_AREA  ("Restricted Area Detection", 0x4CAF50);
+        RESTRICTED_AREA  ("Restricted Area (WIP)",   0x555566);  // disabled / placeholder
 
         private final String displayName;
         private final int    colour;       // for UI badges

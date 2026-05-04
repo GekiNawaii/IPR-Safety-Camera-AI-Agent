@@ -4,18 +4,13 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import nu.pattern.OpenCV;
 
 import javax.swing.*;
-import java.io.File;
-import java.io.IOException;
 
 /**
  * Application entry point.
  * Bootstraps OpenCV native library, sets dark UI theme,
- * then runs the startup flow: Guide (first run only) → Camera Select → Main Window.
+ * then runs the startup flow: Guide → Camera Select → Main Window.
  */
 public class Main {
-
-    /** Marker file – its existence means the guide has already been shown. */
-    private static final File GUIDE_MARKER = new File(".guide_shown");
 
     public static void main(String[] args) {
         // Load OpenCV native library (bundled inside openpnp JAR)
@@ -51,17 +46,9 @@ public class Main {
         UIManager.put("Label.foreground",            new java.awt.Color(0xE0E0E0));
 
         SwingUtilities.invokeLater(() -> {
-            // Step 1: Show usage guide only on first run
-            if (!GUIDE_MARKER.exists()) {
-                GuideDialog guide = new GuideDialog(null);
-                guide.setVisible(true);   // modal – blocks until closed
-                // Create marker so the guide won't appear again
-                try {
-                    GUIDE_MARKER.createNewFile();
-                } catch (IOException ex) {
-                    System.err.println("Could not create guide marker: " + ex.getMessage());
-                }
-            }
+            // Step 1: Show usage guide (Close locked until scrolled to bottom)
+            GuideDialog guide = new GuideDialog(null);
+            guide.setVisible(true);
 
             // Step 2: Camera selection
             CameraSelectDialog dialog = new CameraSelectDialog(null);
@@ -78,4 +65,3 @@ public class Main {
         });
     }
 }
-

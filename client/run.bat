@@ -21,24 +21,17 @@ if not exist "%LOCAL_MVN%" (
 
 set MVN_CMD="%LOCAL_MVN%"
 
-REM ── Build only if JAR does not exist yet ─────────────────────────
-set JAR_PATH=%~dp0target\safety-camera.jar
-if exist "%JAR_PATH%" (
-    echo [1/2] Application already built. Skipping build.
-    echo       ^(Delete target\safety-camera.jar to force rebuild^)
-) else (
-    echo [1/2] Building application for the first time...
-    call %MVN_CMD% package -DskipTests
-    if %ERRORLEVEL% NEQ 0 (
-        echo.
-        echo [ERROR] Build failed. See output above.
-        pause
-        exit /b 1
-    )
+echo [1/2] Building application...
+call %MVN_CMD% package -DskipTests
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo [ERROR] Build failed. See output above.
+    pause
+    exit /b 1
 )
 
 echo.
 echo [2/2] Launching application...
-java -jar "%JAR_PATH%"
+java -jar "%~dp0target\safety-camera.jar"
 
 endlocal
